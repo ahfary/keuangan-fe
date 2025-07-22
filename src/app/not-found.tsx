@@ -1,8 +1,14 @@
 import Link from 'next/link';
 import { TriangleAlert } from 'lucide-react';
 import React from 'react';
+import { error } from 'console';
 
 export default function NotFound() {
+  try {
+    console.log('jalan')
+  } catch {
+    throw new Error('Something Went Wrong');
+  }
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 dark:bg-gray-900">
       <div className="text-center">
