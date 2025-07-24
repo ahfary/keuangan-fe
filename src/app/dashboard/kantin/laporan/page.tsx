@@ -1,5 +1,5 @@
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/lable';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LaporanHarianPage() {
   return (

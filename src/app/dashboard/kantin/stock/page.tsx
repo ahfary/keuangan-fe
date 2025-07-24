@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle, FilePenLine, Trash2, X } from 'lucide-react';
 
 // FIX: Memperbaiki path dan cara impor komponen UI
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/lable';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 // Tipe data untuk Produk
 interface Product {

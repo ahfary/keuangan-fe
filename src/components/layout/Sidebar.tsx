@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, CreditCard, FileText, LogOut, Store, Archive, ShoppingCart, BookText, TrendingUp, BookUser } from 'lucide-react';
-import { cn } from '@/app/lib/utils'; // Pastikan utilitas cn sudah ada
+import { cn } from '@/lib/utils'; // Pastikan utilitas cn sudah ada
 
 // Tipe data baru untuk mendukung submenu
 export interface NavLink {

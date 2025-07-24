@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Button } from '@/app/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { PlusCircle, CheckCircle } from 'lucide-react';
 
 // Data tiruan untuk piutang

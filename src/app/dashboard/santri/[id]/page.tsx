@@ -1,23 +1,25 @@
+// File: src/app/dashboard/santri/[id]/page.tsx
+
 "use client";
 
 import React, { useState, useEffect, FormEvent } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, Wallet, AlertTriangle, Scissors, LoaderCircle, Edit, History, X } from 'lucide-react';
-import { Button } from '@/app/components/ui/button'; // FIX: Path impor diperbaiki
-import { Input } from '@/app/components/ui/input';   // FIX: Path impor diperbaiki
-import { Label } from '@/app/components/ui/lable';   // FIX: Path impor diperbaiki
-import { getSantriDetail, deductSantriBalance, getSantriTransactions, updateSantriDetail } from '@/app/lib/api';
+// FIX: Path impor disesuaikan dengan struktur folder yang benar (src/components dan src/lib)
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label'; // FIX: Mengimpor dari 'label.tsx' yang sudah diganti namanya
+import { getSantriDetail, deductSantriBalance, getSantriTransactions, updateSantriDetail } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 // --- Tipe Data ---
-// FIX: Menyesuaikan interface dengan data dari backend
 interface SantriDetail {
   id: number;
   name: string;
   kelas: string;
   saldo: number;
-  hutang?: number; // FIX: Jadikan 'hutang' opsional
+  hutang?: number;
 }
 interface Transaction {
     id: string;

@@ -4,10 +4,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Input } from '@/app/components/ui/input'; // FIX: Path impor diperbaiki
-import { Button } from '@/app/components/ui/button'; // FIX: Path impor diperbaiki
+import { Input } from '@/components/ui/input'; // FIX: Path impor diperbaiki
+import { Button } from '@/components/ui/button'; // FIX: Path impor diperbaiki
 import { Eye, UserPlus, LoaderCircle } from 'lucide-react';
-import { getSantriList } from '@/app/lib/api'; // FIX: Path impor diperbaiki
+import { getSantriList } from '@/lib/api'; // FIX: Path impor diperbaiki
 
 // Definisikan tipe data Santri yang sesuai dengan data dari backend
 interface Santri {

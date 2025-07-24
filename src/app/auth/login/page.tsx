@@ -4,11 +4,11 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 // FIX: Path impor yang benar. Alias '@/' sudah menunjuk ke 'src/'.
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/lable'; // FIX: Typo 'lable' menjadi 'label'
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label'; // FIX: Typo 'lable' menjadi 'label'
 import { LoaderCircle, LogIn } from 'lucide-react';
-import { loginUser } from '@/app/lib/api'; // FIX: Path impor yang benar
+import { loginUser } from '@/lib/api'; // FIX: Path impor yang benar
 
 export default function LoginPage() {
   const router = useRouter();
