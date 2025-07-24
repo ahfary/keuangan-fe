@@ -1,132 +1,140 @@
-"use client"; // Jadikan Client Component untuk menggunakan state dan event handler
+// File: src/app/dashboard/santri/page.tsx
 
-import React, { useState } from 'react';
-import { PlusCircle, FilePenLine, Trash2 } from 'lucide-react';
-import SantriFormModal from './components/SantriFormModal'; // Impor komponen modal
+"use client";
 
-// Tipe data untuk santri
+import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
+import { Input } from '@/app/components/ui/input'; // FIX: Path impor diperbaiki
+import { Button } from '@/app/components/ui/button'; // FIX: Path impor diperbaiki
+import { Eye, UserPlus, LoaderCircle } from 'lucide-react';
+import { getSantriList } from '@/app/lib/api'; // FIX: Path impor diperbaiki
+
+// Definisikan tipe data Santri yang sesuai dengan data dari backend
 interface Santri {
-  id: string;
+  id: number; // ID dari database biasanya number
   name: string;
-  class: string;
-  dormitory: string;
-  balance: number;
+  kelas: string; // FIX: Menggunakan 'kelas'
+  saldo: number; // FIX: Menggunakan 'saldo'
 }
 
-// Data tiruan awal
-const initialSantriList: Santri[] = [
-  { id: 'ST001', name: 'Ahmad Yusuf', class: '3 Aliyah', dormitory: 'Blok A', balance: 500000 },
-  { id: 'ST002', name: 'Budi Santoso', class: '2 Tsanawiyah', dormitory: 'Blok B', balance: 250000 },
-  { id: 'ST003', name: 'Citra Lestari', class: '1 Aliyah', dormitory: 'Blok C Putri', balance: 750000 },
-  { id: 'ST004', name: 'Dewi Anggraini', class: '3 Tsanawiyah', dormitory: 'Blok D Putri', balance: 150000 },
-];
+export default function SantriListPage() {
+  const [santriList, setSantriList] = useState<Santri[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState('Semua');
 
-export default function SantriPage() {
-  // State untuk mengelola daftar santri
-  const [santriList, setSantriList] = useState<Santri[]>(initialSantriList);
-  // State untuk mengontrol visibilitas modal
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  // State untuk menampung data santri yang akan diedit
-  const [editingSantri, setEditingSantri] = useState<Santri | null>(null);
+  // Efek untuk mengambil data saat komponen dimuat
+  useEffect(() => {
+    const fetchSantri = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('accessToken') || '';
+        const data = await getSantriList(token);
+        setSantriList(data);
+      } catch (error) {
+        console.error("Gagal mengambil data santri:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchSantri();
+  }, []);
 
-  const handleOpenModal = (santri: Santri | null = null) => {
-    setEditingSantri(santri);
-    setIsModalOpen(true);
-  };
+  // Dapatkan daftar kelas unik dari data santri
+  const uniqueClasses = useMemo(() => {
+    // FIX: Menggunakan properti 'kelas'
+    const classes = new Set(santriList.map(s => s.kelas));
+    return ['Semua', ...Array.from(classes)];
+  }, [santriList]);
 
-  const handleCloseModal = () => {
-    setEditingSantri(null);
-    setIsModalOpen(false);
-  };
-
-  const handleSaveSantri = (dataToSave: Omit<Santri, 'balance' | 'id'> & { id?: string }) => {
-    // Jika ada ID, berarti mode edit
-    if (dataToSave.id) {
-      setSantriList(prevList =>
-        prevList.map(s =>
-          s.id === dataToSave.id ? { ...s, ...dataToSave } : s
-        )
-      );
-      // TODO: Panggil API untuk UPDATE santri
-    } else {
-      // Jika tidak ada ID, berarti mode tambah
-      const newSantri: Santri = {
-        ...dataToSave,
-        id: `ST${Date.now()}`, // ID sementara, akan diganti oleh backend
-        balance: 0, // Saldo awal untuk santri baru
-      };
-      setSantriList(prevList => [newSantri, ...prevList]);
-      // TODO: Panggil API untuk CREATE santri
-    }
-    handleCloseModal();
-  };
-  
-  const handleDeleteSantri = (id: string) => {
-    // Tambahkan konfirmasi sebelum menghapus
-    if (confirm('Apakah Anda yakin ingin menghapus data santri ini?')) {
-        setSantriList(prevList => prevList.filter(s => s.id !== id));
-        // TODO: Panggil API untuk DELETE santri
-    }
-  };
-
+  // Logika untuk memfilter santri
+  const filteredSantri = useMemo(() => {
+    // Pastikan santri dan propertinya ada sebelum diakses
+    return santriList.filter(santri => {
+      const matchesSearch = santri.name && santri.name.toLowerCase().includes(searchTerm.toLowerCase());
+      // FIX: Menggunakan properti 'kelas'
+      const matchesClass = selectedClass === 'Semua' || santri.kelas === selectedClass;
+      return matchesSearch && matchesClass;
+    });
+  }, [santriList, searchTerm, selectedClass]);
 
   return (
-    <div>
-      {/* Header Halaman */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Manajemen Data Santri</h1>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-indigo-700 transition-colors"
-        >
-          <PlusCircle className="w-5 h-5 mr-2" />
-          Tambah Santri
-        </button>
-      </div>
-
-      {/* Tabel Data Santri */}
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-              <tr>
-                <th scope="col" className="px-6 py-3">Nama</th>
-                <th scope="col" className="px-6 py-3">Kelas</th>
-                <th scope="col" className="px-6 py-3">Asrama</th>
-                <th scope="col" className="px-6 py-3">Saldo</th>
-                <th scope="col" className="px-6 py-3 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {santriList.map((santri) => (
-                <tr key={santri.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                  <th scope="row" className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    {santri.name}
-                  </th>
-                  <td className="px-6 py-4">{santri.class}</td>
-                  <td className="px-6 py-4">{santri.dormitory}</td>
-                  <td className="px-6 py-4">
-                    {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.balance)}
-                  </td>
-
-                  <td className="px-6 py-4 flex justify-center space-x-2">
-                    <button onClick={() => handleOpenModal(santri)} className="p-2 text-blue-600 hover:text-blue-800"><FilePenLine className="w-5 h-5" /></button>
-                    <button onClick={() => handleDeleteSantri(santri.id)} className="p-2 text-red-600 hover:text-red-800"><Trash2 className="w-5 h-5" /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Manajemen Santri</h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">Cari, filter, dan kelola data keuangan santri.</p>
         </div>
+        <Button>
+          <UserPlus className="w-5 h-5 mr-2" />
+          Tambah Santri Baru
+        </Button>
       </div>
-      
-      {/* Render Komponen Modal */}
-      <SantriFormModal 
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onSave={handleSaveSantri}
-        santriData={editingSantri}
-      />
+
+      {/* Panel Filter */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <Input
+          placeholder="Cari nama santri..."
+          value={searchTerm}
+          onChange={(e: any) => setSearchTerm(e.target.value)}
+          className="max-w-full md:max-w-xs"
+        />
+        <select
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+          className="flex h-10 w-full md:max-w-xs items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        >
+          {uniqueClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+        </select>
+      </div>
+
+      {/* Tabel Data */}
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <LoaderCircle className="w-8 h-8 animate-spin text-indigo-600" />
+            <p className="ml-4 text-gray-500">Memuat data santri...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-700 dark:text-gray-400">
+                <tr>
+                  <th className="px-6 py-3">Nama</th>
+                  <th className="px-6 py-3">Kelas</th>
+                  <th className="px-6 py-3">Saldo</th>
+                  <th className="px-6 py-3 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y dark:divide-gray-700">
+                {filteredSantri.length > 0 ? filteredSantri.map((santri) => (
+                  <tr key={santri.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{santri.name}</td>
+                    {/* FIX: Menggunakan properti 'kelas' */}
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{santri.kelas}</td>
+                    {/* FIX: Menggunakan properti 'saldo' */}
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <Link href={`/dashboard/santri/${santri.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye className="w-4 h-4 mr-2" />
+                          Detail
+                        </Button>
+                      </Link>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={4} className="text-center py-10 text-gray-500">
+                      Data tidak ditemukan.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
