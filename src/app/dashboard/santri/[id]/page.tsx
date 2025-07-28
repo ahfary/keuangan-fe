@@ -1,15 +1,12 @@
-// File: src/app/dashboard/santri/[id]/page.tsx
-
 "use client";
 
 import React, { useState, useEffect, FormEvent } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, Wallet, AlertTriangle, Scissors, LoaderCircle, Edit, History, X } from 'lucide-react';
-// FIX: Path impor disesuaikan dengan struktur folder yang benar (src/components dan src/lib)
+import { ArrowLeft, Wallet, AlertTriangle, Scissors, LoaderCircle, Edit, History, X, SearchX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // FIX: Mengimpor dari 'label.tsx' yang sudah diganti namanya
+import { Label } from '@/components/ui/label';
 import { getSantriDetail, deductSantriBalance, getSantriTransactions, updateSantriDetail } from '@/lib/api';
 import toast from 'react-hot-toast';
 
@@ -81,6 +78,7 @@ export default function SantriDetailPage() {
   const [santri, setSantri] = useState<SantriDetail | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // State baru untuk pesan error
   const [deductionAmount, setDeductionAmount] = useState('');
   const [deductionDesc, setDeductionDesc] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -90,6 +88,7 @@ export default function SantriDetailPage() {
     const fetchAllData = async () => {
       if (!id) return;
       setIsLoading(true);
+      setError(null);
       try {
         const token = localStorage.getItem('accessToken') || '';
         const [santriData, transactionData] = await Promise.all([
@@ -98,8 +97,9 @@ export default function SantriDetailPage() {
         ]);
         setSantri(santriData);
         setTransactions(transactionData);
-      } catch (error) {
-        console.error("Gagal mengambil data:", error);
+      } catch (err: any) {
+        console.error("Gagal mengambil data:", err);
+        setError(err.message); // Simpan pesan error
         setSantri(null);
       } finally {
         setIsLoading(false);
@@ -108,6 +108,7 @@ export default function SantriDetailPage() {
     fetchAllData();
   }, [id]);
   
+  // ... (fungsi handleDeductBalance dan handleUpdateSantri tetap sama) ...
   const handleDeductBalance = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!santri) return;
@@ -157,8 +158,26 @@ export default function SantriDetailPage() {
     return <div className="flex justify-center items-center h-full pt-20"><LoaderCircle className="w-10 h-10 animate-spin text-indigo-600" /></div>;
   }
 
+  // FIX: Tampilkan pesan error yang informatif jika data tidak ditemukan
+  if (error) {
+    return (
+        <div className="text-center pt-20 flex flex-col items-center">
+            <SearchX className="w-16 h-16 text-red-500 mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Gagal Memuat Data</h2>
+            <p className="text-gray-500 mt-2">{error}</p>
+            <Link href="/dashboard/santri" className="mt-6 inline-block">
+                <Button>
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Kembali ke Daftar Santri
+                </Button>
+            </Link>
+        </div>
+    );
+  }
+
   if (!santri) {
-    return <div className="text-center pt-20"><h2 className="text-xl font-semibold">Santri Tidak Ditemukan</h2><Link href="/dashboard/santri" className="mt-4 inline-block"><Button><ArrowLeft className="w-4 h-4 mr-2" />Kembali</Button></Link></div>;
+    // Fallback jika santri null tanpa error (seharusnya tidak terjadi)
+    return <div>Data tidak tersedia.</div>;
   }
 
   return (

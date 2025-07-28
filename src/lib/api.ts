@@ -49,13 +49,31 @@ export const getSantriList = async (token: string) => {
 
 // 2. Fungsi untuk mendapatkan detail satu santri berdasarkan ID
 export const getSantriDetail = async (id: string, token: string) => {
-  // Di aplikasi nyata:
-  
-  const response = await fetch(`${API_BASE_URL}/santri/${id}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  });
-  if (!response.ok) throw new Error('Gagal mengambil detail santri');
-  return response.json();
+  try {
+    const numericId = parseInt(id, 10);
+    if (isNaN(numericId)) {
+        throw new Error("ID Santri tidak valid.");
+    }
+
+    const response = await fetch(`${API_BASE_URL}/santri/${numericId}`, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    // FIX: Logika error handling yang lebih baik
+    if (response.status === 404) {
+        throw new Error('Santri tidak ditemukan di database.');
+    }
+    if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Gagal mengambil detail santri.');
+    }
+    return response.json();
+
+  } catch (error) {
+    console.error('getSantriDetail API Error:', error);
+    throw error;
+  }
 };
 
 // 3. Fungsi untuk memotong saldo santri

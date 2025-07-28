@@ -1,20 +1,18 @@
-// File: src/app/dashboard/santri/page.tsx
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Input } from '@/components/ui/input'; // FIX: Path impor diperbaiki
-import { Button } from '@/components/ui/button'; // FIX: Path impor diperbaiki
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Eye, UserPlus, LoaderCircle } from 'lucide-react';
-import { getSantriList } from '@/lib/api'; // FIX: Path impor diperbaiki
+import { getSantriList } from '@/lib/api'; // Menggunakan fungsi dari api.ts
 
-// Definisikan tipe data Santri yang sesuai dengan data dari backend
+// Definisikan tipe data Santri
 interface Santri {
-  id: number; // ID dari database biasanya number
+  id: string;
   name: string;
-  kelas: string; // FIX: Menggunakan 'kelas'
-  saldo: number; // FIX: Menggunakan 'saldo'
+  class: string;
+  balance: number;
 }
 
 export default function SantriListPage() {
@@ -28,11 +26,13 @@ export default function SantriListPage() {
     const fetchSantri = async () => {
       setIsLoading(true);
       try {
+        // Di aplikasi nyata, Anda akan mengambil token dari state management atau cookies
         const token = localStorage.getItem('accessToken') || '';
         const data = await getSantriList(token);
         setSantriList(data);
       } catch (error) {
         console.error("Gagal mengambil data santri:", error);
+        // Di sini Anda bisa menampilkan notifikasi error (toast)
       } finally {
         setIsLoading(false);
       }
@@ -40,20 +40,17 @@ export default function SantriListPage() {
     fetchSantri();
   }, []);
 
-  // Dapatkan daftar kelas unik dari data santri
+  // Dapatkan daftar kelas unik dari data santri untuk filter dropdown
   const uniqueClasses = useMemo(() => {
-    // FIX: Menggunakan properti 'kelas'
-    const classes = new Set(santriList.map(s => s.kelas));
+    const classes = new Set(santriList.map(s => s.class));
     return ['Semua', ...Array.from(classes)];
   }, [santriList]);
 
-  // Logika untuk memfilter santri
+  // Logika untuk memfilter santri berdasarkan pencarian dan kelas
   const filteredSantri = useMemo(() => {
-    // Pastikan santri dan propertinya ada sebelum diakses
     return santriList.filter(santri => {
-      const matchesSearch = santri.name && santri.name.toLowerCase().includes(searchTerm.toLowerCase());
-      // FIX: Menggunakan properti 'kelas'
-      const matchesClass = selectedClass === 'Semua' || santri.kelas === selectedClass;
+      const matchesSearch = santri.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClass = selectedClass === 'Semua' || santri.class === selectedClass;
       return matchesSearch && matchesClass;
     });
   }, [santriList, searchTerm, selectedClass]);
@@ -110,10 +107,8 @@ export default function SantriListPage() {
                 {filteredSantri.length > 0 ? filteredSantri.map((santri) => (
                   <tr key={santri.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{santri.name}</td>
-                    {/* FIX: Menggunakan properti 'kelas' */}
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{santri.kelas}</td>
-                    {/* FIX: Menggunakan properti 'saldo' */}
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{santri.class}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.balance)}</td>
                     <td className="px-6 py-4 text-center">
                       <Link href={`/dashboard/santri/${santri.id}`}>
                         <Button variant="outline" size="sm">
