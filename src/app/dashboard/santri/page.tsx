@@ -1,3 +1,5 @@
+// File: src/app/dashboard/santri/page.tsx
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -5,14 +7,13 @@ import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Eye, UserPlus, LoaderCircle } from 'lucide-react';
-import { getSantriList } from '@/lib/api'; // Menggunakan fungsi dari api.ts
+import { getSantriList } from '@/lib/api';
 
-// Definisikan tipe data Santri
 interface Santri {
-  id: string;
+  id: number;
   name: string;
-  class: string;
-  balance: number;
+  kelas: string;
+  saldo: number;
 }
 
 export default function SantriListPage() {
@@ -21,18 +22,15 @@ export default function SantriListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('Semua');
 
-  // Efek untuk mengambil data saat komponen dimuat
   useEffect(() => {
     const fetchSantri = async () => {
       setIsLoading(true);
       try {
-        // Di aplikasi nyata, Anda akan mengambil token dari state management atau cookies
         const token = localStorage.getItem('accessToken') || '';
         const data = await getSantriList(token);
         setSantriList(data);
       } catch (error) {
         console.error("Gagal mengambil data santri:", error);
-        // Di sini Anda bisa menampilkan notifikasi error (toast)
       } finally {
         setIsLoading(false);
       }
@@ -40,17 +38,15 @@ export default function SantriListPage() {
     fetchSantri();
   }, []);
 
-  // Dapatkan daftar kelas unik dari data santri untuk filter dropdown
   const uniqueClasses = useMemo(() => {
-    const classes = new Set(santriList.map(s => s.class));
+    const classes = new Set(santriList.map(s => s.kelas));
     return ['Semua', ...Array.from(classes)];
   }, [santriList]);
 
-  // Logika untuk memfilter santri berdasarkan pencarian dan kelas
   const filteredSantri = useMemo(() => {
     return santriList.filter(santri => {
-      const matchesSearch = santri.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesClass = selectedClass === 'Semua' || santri.class === selectedClass;
+      const matchesSearch = santri.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesClass = selectedClass === 'Semua' || santri.kelas === selectedClass;
       return matchesSearch && matchesClass;
     });
   }, [santriList, searchTerm, selectedClass]);
@@ -68,12 +64,11 @@ export default function SantriListPage() {
         </Button>
       </div>
 
-      {/* Panel Filter */}
       <div className="flex flex-col md:flex-row gap-4">
         <Input
           placeholder="Cari nama santri..."
           value={searchTerm}
-          onChange={(e: any) => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-full md:max-w-xs"
         />
         <select
@@ -85,7 +80,6 @@ export default function SantriListPage() {
         </select>
       </div>
 
-      {/* Tabel Data */}
       <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
@@ -107,8 +101,8 @@ export default function SantriListPage() {
                 {filteredSantri.length > 0 ? filteredSantri.map((santri) => (
                   <tr key={santri.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{santri.name}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{santri.class}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.balance)}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{santri.kelas}</td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</td>
                     <td className="px-6 py-4 text-center">
                       <Link href={`/dashboard/santri/${santri.id}`}>
                         <Button variant="outline" size="sm">
