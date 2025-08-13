@@ -206,7 +206,7 @@ export default function SantriDetailPage() {
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center"><Wallet className="w-8 h-8 text-green-500 mr-4" /><div><p className="text-sm text-gray-500">Saldo Saat Ini</p><p className="text-3xl font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</p></div></div>
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center"><AlertTriangle className="w-8 h-8 text-yellow-500 mr-4" /><div><p className="text-sm text-gray-500">Total Hutang</p><p className="text-3xl font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.hutang ?? 0)}</p></div></div>
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                {/* <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
                     <h2 className="text-xl font-semibold mb-4">Aksi Keuangan</h2>
                     <form onSubmit={handleDeductBalance} className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -215,25 +215,25 @@ export default function SantriDetailPage() {
                         </div>
                         <div className="text-right"><Button type="submit" disabled={isProcessing}>{isProcessing ? <LoaderCircle className="w-5 h-5 mr-2 animate-spin" /> : <Scissors className="w-5 h-5 mr-2" />}{isProcessing ? 'Memproses...' : 'Potong Saldo'}</Button></div>
                     </form>
-                </div>
+                    </div> */}
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                        <h2 className="text-xl font-semibold mb-4 flex items-center"><History className="w-5 h-5 mr-2" />Riwayat Jajan</h2>
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {transactions.length > 0 ? transactions.map(tx => (
+                                <div key={tx.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
+                                    <div>
+                                        <p className="font-medium">{tx.description}</p>
+                                        <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                    </div>
+                                    <p className="font-semibold text-red-600">-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)}</p>
+                                </div>
+                            )) : (
+                                <p className="text-sm text-gray-500 text-center py-8">Belum ada riwayat transaksi.</p>
+                            )}
+                        </div>
+                    </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-semibold mb-4 flex items-center"><History className="w-5 h-5 mr-2" />Riwayat Jajan</h2>
-                <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {transactions.length > 0 ? transactions.map(tx => (
-                        <div key={tx.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
-                            <div>
-                                <p className="font-medium">{tx.description}</p>
-                                <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                            </div>
-                            <p className="font-semibold text-red-600">-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)}</p>
-                        </div>
-                    )) : (
-                        <p className="text-sm text-gray-500 text-center py-8">Belum ada riwayat transaksi.</p>
-                    )}
-                </div>
-            </div>
         </div>
       </div>
       

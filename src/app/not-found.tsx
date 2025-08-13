@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { TriangleAlert } from 'lucide-react';
 import React from 'react';
-import { error } from 'console';
 
 export default function NotFound() {
   try {

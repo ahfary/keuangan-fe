@@ -25,7 +25,6 @@ const navLinks: NavLink[] = [
     subMenus: [
       { name: 'Stok Barang', href: '/dashboard/kantin/stock', icon: Archive },
       { name: 'Data Penjualan', href: '/dashboard/kantin/penjualan', icon: ShoppingCart },
-      { name: 'Laporan Harian', href: '/dashboard/kantin/laporan', icon: BookText },
       { name: 'Pendapatan', href: '/dashboard/kantin/pendapatan', icon: TrendingUp },
       { name: 'Piutang', href: '/dashboard/kantin/piutang', icon: BookUser },
     ]
