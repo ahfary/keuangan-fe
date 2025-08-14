@@ -23,13 +23,54 @@ interface Transaction {
     description: string;
     amount: number;
     date: string;
+    type: 'jajan' | 'hutang' | 'tarik_tunai'; // Menambahkan tipe transaksi
 }
 interface SantriEditData {
     name: string;
     kelas: string;
 }
 
-// --- Komponen Modal Edit Santri ---
+// --- Komponen-komponen ---
+
+// Komponen Tabs sederhana
+const Tabs = ({ tabs, activeTab, setActiveTab }) => (
+  <div className="border-b border-gray-200 dark:border-gray-700">
+    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+      {tabs.map((tab) => (
+        <button
+          key={tab.name}
+          onClick={() => setActiveTab(tab.name)}
+          className={`${
+            activeTab === tab.name
+              ? 'border-indigo-500 text-indigo-600'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+          } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+        >
+          {tab.name}
+        </button>
+      ))}
+    </nav>
+  </div>
+);
+
+const TransactionList = ({ transactions }) => (
+  <div className="space-y-4 max-h-96 overflow-y-auto">
+    {transactions.length > 0 ? transactions.map(tx => (
+      <div key={tx.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
+        <div>
+          <p className="font-medium">{tx.description}</p>
+          <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+        <p className="font-semibold text-red-600">-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)}</p>
+      </div>
+    )) : (
+      <p className="text-sm text-gray-500 text-center py-8">Belum ada riwayat.</p>
+    )}
+  </div>
+);
+
+
+// --- Komponen Modal Edit Santri (tidak berubah) ---
 const EditSantriModal = ({ santri, isOpen, onClose, onSave }: { santri: SantriDetail; isOpen: boolean; onClose: () => void; onSave: (data: SantriEditData) => void; }) => {
     const [formData, setFormData] = useState<SantriEditData>({ name: santri.name, kelas: santri.kelas });
     
@@ -78,11 +119,9 @@ export default function SantriDetailPage() {
   const [santri, setSantri] = useState<SantriDetail | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // State baru untuk pesan error
-  const [deductionAmount, setDeductionAmount] = useState('');
-  const [deductionDesc, setDeductionDesc] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('Riwayat Jajan'); // State untuk tab aktif
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -91,15 +130,19 @@ export default function SantriDetailPage() {
       setError(null);
       try {
         const token = localStorage.getItem('accessToken') || '';
-        const [santriData, transactionData] = await Promise.all([
-            getSantriDetail(id, token),
-            getSantriTransactions(id, token)
-        ]);
+        // Simulasi data transaksi dengan tipe yang berbeda
+        const santriData = await getSantriDetail(id, token);
+        const transactionData = [
+            { id: '1', description: 'Nasi Goreng', amount: 15000, date: '2024-08-10', type: 'jajan' },
+            { id: '2', description: 'Bayar Utang Buku', amount: 50000, date: '2024-08-09', type: 'hutang' },
+            { id: '3', description: 'Tarik Tunai', amount: 100000, date: '2024-08-08', type: 'tarik_tunai' },
+            { id: '4', description: 'Es Teh', amount: 5000, date: '2024-08-10', type: 'jajan' },
+        ];
         setSantri(santriData);
         setTransactions(transactionData);
       } catch (err: any) {
         console.error("Gagal mengambil data:", err);
-        setError(err.message); // Simpan pesan error
+        setError(err.message);
         setSantri(null);
       } finally {
         setIsLoading(false);
@@ -107,35 +150,6 @@ export default function SantriDetailPage() {
     };
     fetchAllData();
   }, [id]);
-  
-  // ... (fungsi handleDeductBalance dan handleUpdateSantri tetap sama) ...
-  const handleDeductBalance = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!santri) return;
-    const amount = parseFloat(deductionAmount);
-    if (!amount || amount <= 0 || !deductionDesc) { toast.error('Jumlah dan deskripsi harus diisi.'); return; }
-    if (amount > santri.saldo) { toast.error('Saldo tidak mencukupi.'); return; }
-
-    setIsProcessing(true);
-    const token = localStorage.getItem('accessToken') || '';
-
-    const promise = deductSantriBalance(id, amount, deductionDesc, token);
-
-    toast.promise(promise, {
-        loading: 'Memproses pemotongan saldo...',
-        success: (updatedSantri) => {
-            setSantri(updatedSantri);
-            setDeductionAmount('');
-            setDeductionDesc('');
-            setIsProcessing(false);
-            return 'Saldo berhasil dipotong!';
-        },
-        error: (err) => {
-            setIsProcessing(false);
-            return `Gagal: ${err.message}`;
-        }
-    });
-  };
 
   const handleUpdateSantri = async (data: SantriEditData) => {
     if (!santri) return;
@@ -158,7 +172,6 @@ export default function SantriDetailPage() {
     return <div className="flex justify-center items-center h-full pt-20"><LoaderCircle className="w-10 h-10 animate-spin text-indigo-600" /></div>;
   }
 
-  // FIX: Tampilkan pesan error yang informatif jika data tidak ditemukan
   if (error) {
     return (
         <div className="text-center pt-20 flex flex-col items-center">
@@ -176,9 +189,22 @@ export default function SantriDetailPage() {
   }
 
   if (!santri) {
-    // Fallback jika santri null tanpa error (seharusnya tidak terjadi)
     return <div>Data tidak tersedia.</div>;
   }
+
+  // Logika untuk memfilter transaksi berdasarkan tab
+  const filteredTransactions = transactions.filter(tx => {
+      if (activeTab === 'Riwayat Jajan') return tx.type === 'jajan';
+      if (activeTab === 'Riwayat Hutang') return tx.type === 'hutang';
+      if (activeTab === 'Riwayat Tarik Tunai') return tx.type === 'tarik_tunai';
+      return false;
+  });
+
+  const tabs = [
+      { name: 'Riwayat Jajan' },
+      { name: 'Riwayat Hutang' },
+      { name: 'Riwayat Tarik Tunai' },
+  ];
 
   return (
     <>
@@ -206,34 +232,14 @@ export default function SantriDetailPage() {
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center"><Wallet className="w-8 h-8 text-green-500 mr-4" /><div><p className="text-sm text-gray-500">Saldo Saat Ini</p><p className="text-3xl font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</p></div></div>
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center"><AlertTriangle className="w-8 h-8 text-yellow-500 mr-4" /><div><p className="text-sm text-gray-500">Total Hutang</p><p className="text-3xl font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.hutang ?? 0)}</p></div></div>
                 </div>
-                {/* <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                    <h2 className="text-xl font-semibold mb-4">Aksi Keuangan</h2>
-                    <form onSubmit={handleDeductBalance} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><Label htmlFor="amount">Jumlah Potongan (Rp)</Label><Input id="amount" type="number" placeholder="10000" value={deductionAmount} onChange={e => setDeductionAmount(e.target.value)} disabled={isProcessing} /></div>
-                            <div><Label htmlFor="description">Deskripsi</Label><Input id="description" type="text" placeholder="Pembayaran Uang Kas" value={deductionDesc} onChange={e => setDeductionDesc(e.target.value)} disabled={isProcessing} /></div>
-                        </div>
-                        <div className="text-right"><Button type="submit" disabled={isProcessing}>{isProcessing ? <LoaderCircle className="w-5 h-5 mr-2 animate-spin" /> : <Scissors className="w-5 h-5 mr-2" />}{isProcessing ? 'Memproses...' : 'Potong Saldo'}</Button></div>
-                    </form>
-                    </div> */}
-                    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-                        <h2 className="text-xl font-semibold mb-4 flex items-center"><History className="w-5 h-5 mr-2" />Riwayat Jajan</h2>
-                        <div className="space-y-4 max-h-96 overflow-y-auto">
-                            {transactions.length > 0 ? transactions.map(tx => (
-                                <div key={tx.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
-                                    <div>
-                                        <p className="font-medium">{tx.description}</p>
-                                        <p className="text-xs text-gray-500">{new Date(tx.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                                    </div>
-                                    <p className="font-semibold text-red-600">-{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(tx.amount)}</p>
-                                </div>
-                            )) : (
-                                <p className="text-sm text-gray-500 text-center py-8">Belum ada riwayat transaksi.</p>
-                            )}
-                        </div>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                    <h2 className="text-xl font-semibold mb-2 flex items-center"><History className="w-5 h-5 mr-2" />Riwayat</h2>
+                    <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <div className="mt-4">
+                        <TransactionList transactions={filteredTransactions} />
                     </div>
+                </div>
             </div>
-
         </div>
       </div>
       
