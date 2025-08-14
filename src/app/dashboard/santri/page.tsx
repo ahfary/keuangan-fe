@@ -1,36 +1,36 @@
-// File: src/app/dashboard/santri/page.tsx
-
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Input } from '@/components/ui/input';
+import { Plus, Search, Trash2, Edit, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Eye, UserPlus, LoaderCircle } from 'lucide-react';
-import { getSantriList } from '@/lib/api';
+import { Input } from '@/components/ui/input';
+import { getSantriList, createSantri, deleteSantri } from '@/lib/api';
+import SantriFormModal from './components/SantriFormModal';
+import toast from 'react-hot-toast';
 
 interface Santri {
-  id: number;
+  id: string;
   name: string;
   kelas: string;
   saldo: number;
 }
 
-export default function SantriListPage() {
+export default function SantriPage() {
   const [santriList, setSantriList] = useState<Santri[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('Semua');
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchSantri = async () => {
-      setIsLoading(true);
       try {
         const token = localStorage.getItem('accessToken') || '';
         const data = await getSantriList(token);
         setSantriList(data);
       } catch (error) {
         console.error("Gagal mengambil data santri:", error);
+        toast.error('Gagal mengambil data santri.');
       } finally {
         setIsLoading(false);
       }
@@ -38,92 +38,125 @@ export default function SantriListPage() {
     fetchSantri();
   }, []);
 
-  const uniqueClasses = useMemo(() => {
-    const classes = new Set(santriList.map(s => s.kelas));
-    return ['Semua', ...Array.from(classes)];
-  }, [santriList]);
+  const handleCreateSantri = async (data: { name: string; kelas: string; }) => {
+    const token = localStorage.getItem('accessToken') || '';
+    const promise = createSantri(data, token);
 
-  const filteredSantri = useMemo(() => {
-    return santriList.filter(santri => {
-      const matchesSearch = santri.name?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesClass = selectedClass === 'Semua' || santri.kelas === selectedClass;
-      return matchesSearch && matchesClass;
+    toast.promise(promise, {
+      loading: 'Menambahkan santri baru...',
+      success: (newSantri) => {
+        setSantriList(prev => [newSantri, ...prev]);
+        setIsModalOpen(false);
+        return 'Santri berhasil ditambahkan!';
+      },
+      error: (err) => `Gagal: ${err.message}`
     });
-  }, [santriList, searchTerm, selectedClass]);
+  };
+
+  const handleDeleteSantri = (id: string) => {
+    // Konfirmasi sebelum menghapus
+    toast((t) => (
+      <div className="flex flex-col items-center gap-4">
+        <p className="font-semibold">Anda yakin ingin menghapus santri ini?</p>
+        <div className="flex gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              const token = localStorage.getItem('accessToken') || '';
+              const promise = deleteSantri(id, token);
+              toast.promise(promise, {
+                  loading: 'Menghapus...',
+                  success: () => {
+                      setSantriList(prev => prev.filter(s => s.id !== id));
+                      toast.dismiss(t.id);
+                      return 'Santri berhasil dihapus!';
+                  },
+                  error: (err) => `Gagal: ${err.message}`
+              });
+            }}
+          >
+            Ya, Hapus
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => toast.dismiss(t.id)}>
+            Batal
+          </Button>
+        </div>
+      </div>
+    ), { duration: 10000 });
+  };
+
+
+  const filteredSantri = santriList.filter(s =>
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.kelas.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Manajemen Santri</h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Cari, filter, dan kelola data keuangan santri.</p>
+    <>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Manajemen Santri</h1>
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Santri
+          </Button>
         </div>
-        <Button>
-          <UserPlus className="w-5 h-5 mr-2" />
-          Tambah Santri Baru
-        </Button>
-      </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <Input
-          placeholder="Cari nama santri..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-full md:max-w-xs"
-        />
-        <select
-          value={selectedClass}
-          onChange={(e) => setSelectedClass(e.target.value)}
-          className="flex h-10 w-full md:max-w-xs items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-        >
-          {uniqueClasses.map(cls => <option key={cls} value={cls}>{cls}</option>)}
-        </select>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <LoaderCircle className="w-8 h-8 animate-spin text-indigo-600" />
-            <p className="ml-4 text-gray-500">Memuat data santri...</p>
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Input
+              placeholder="Cari nama atau kelas..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 dark:bg-gray-700 text-xs uppercase text-gray-700 dark:text-gray-400">
-                <tr>
-                  <th className="px-6 py-3">Nama</th>
-                  <th className="px-6 py-3">Kelas</th>
-                  <th className="px-6 py-3">Saldo</th>
-                  <th className="px-6 py-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y dark:divide-gray-700">
-                {filteredSantri.length > 0 ? filteredSantri.map((santri) => (
-                  <tr key={santri.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{santri.name}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{santri.kelas}</td>
-                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</td>
-                    <td className="px-6 py-4 text-center">
-                      <Link href={`/dashboard/santri/${santri.id}`}>
-                        <Button variant="outline" size="sm">
-                          <Eye className="w-4 h-4 mr-2" />
-                          Detail
-                        </Button>
-                      </Link>
-                    </td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4} className="text-center py-10 text-gray-500">
-                      Data tidak ditemukan.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+            <table className="w-full text-left">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                        <th className="p-4 font-semibold">Nama</th>
+                        <th className="p-4 font-semibold">Kelas</th>
+                        <th className="p-4 font-semibold">Saldo</th>
+                        <th className="p-4 font-semibold text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {isLoading ? (
+                        <tr><td colSpan={4} className="text-center p-8">Memuat data...</td></tr>
+                    ) : filteredSantri.length > 0 ? (
+                        filteredSantri.map(santri => (
+                            <tr key={santri.id} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <td className="p-4">{santri.name}</td>
+                                <td className="p-4">{santri.kelas}</td>
+                                <td className="p-4 font-mono">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</td>
+                                <td className="p-4 flex justify-center items-center gap-2">
+                                    <Link href={`/dashboard/santri/${santri.id}`}>
+                                      <Button variant="outline" size="sm">Detail</Button>
+                                    </Link>
+                                    <Button variant="destructive" size="sm" onClick={() => handleDeleteSantri(santri.id)}>
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr><td colSpan={4} className="text-center p-8">Tidak ada data santri.</td></tr>
+                    )}
+                </tbody>
             </table>
-          </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      <SantriFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleCreateSantri}
+      />
+    </>
   );
 }

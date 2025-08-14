@@ -59,6 +59,39 @@ export const getSantriDetail = async (id: string, token: string) => {
   return responseData.data;
 };
 
+export const createSantri = async (santriData: { name: string; kelas: string; }, token: string) => {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/santri`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(santriData)
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Gagal menambahkan santri');
+  }
+  return response.json();
+};
+
+// Fungsi untuk menghapus santri
+export const deleteSantri = async (id: string, token: string) => {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/santri/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Gagal menghapus santri');
+  }
+  // Biasanya DELETE request tidak mengembalikan body, cukup cek status OK
+  return { message: 'Santri berhasil dihapus' };
+};
+
+
 export const deductSantriBalance = async (id: string, amount: number, description: string, token: string) => {
     const numericId = parseInt(id, 10);
     const body = { jumlah: amount, deskripsi: description };
