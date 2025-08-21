@@ -1,189 +1,146 @@
+import Cookies from 'js-cookie';
+
 // 1. Konfigurasi dasar
-// URL ini harus menunjuk ke backend Nest.js Anda yang sedang berjalan.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Pastikan variabel ini ada di file .env.local Anda
+const API_BASE_URL = 'https://keuangan-santri-be.vercel.app/';
 
-// 2. Fungsi untuk Login User
-export const loginUser = async (email: string, password: string) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password }),
-    });
+/**
+ * Fungsi helper terpusat untuk melakukan fetch request ke API.
+ * Secara otomatis menyertakan token otentikasi dari cookies.
+ * @param endpoint - Path API setelah base URL (misal: '/santri')
+ * @param options - Opsi standar untuk fetch (method, body, dll.)
+ * @returns {Promise<any>} - Data JSON dari respons API
+ */
+const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
+  const token = Cookies.get('accessToken');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Terjadi kesalahan saat login.');
-    }
-
-    return data;
-
-  } catch (error) {
-    console.error('Login API Error:', error);
-    throw error;
+  // Tambahkan header Authorization jika token ada
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
-};
 
-
-// =========================================SANTRI===========================================================
-
-export const getSantriList = async (token: string) => {
-  const response = await fetch(`${API_BASE_URL}/santri`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  const responseData = await response.json(); // Ambil data JSON dari respons
-
-  if (!response.ok) {
-    throw new Error(responseData.message || 'Gagal mengambil data santri');
-  }
-  // FIX: Kembalikan properti 'data' dari objek respons, bukan seluruh objeknya
-  return responseData.data;
-};
-
-export const getSantriDetail = async (id: string, token: string) => {
-  const numericId = parseInt(id, 10);
-  if (isNaN(numericId)) throw new Error("ID Santri tidak valid.");
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
   
-  const response = await fetch(`${API_BASE_URL}/santri/${numericId}`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  const responseData = await response.json(); // Ambil data JSON dari respons
+  // Penanganan respons DELETE yang mungkin tidak memiliki body
+  if (response.status === 204) {
+    return { success: true };
+  }
+  
+  const responseData = await response.json();
 
   if (!response.ok) {
-    throw new Error(responseData.message || 'Gagal mengambil detail santri.');
+    throw new Error(responseData.message || 'Terjadi kesalahan pada server.');
   }
-  // FIX: Kembalikan properti 'data' dari objek respons
-  return responseData.data;
+
+  return responseData.data || responseData; // Sesuaikan dengan struktur respons BE
 };
 
-export const createSantri = async (santriData: { name: string; kelas: string; }, token: string) => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/santri`, {
+
+// =========================================
+//         FUNGSI AUTENTIKASI
+// =========================================
+
+export const loginUser = async (email, password, role) => {
+  return fetchAPI('/auth/login', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`
-    },
-    body: JSON.stringify(santriData)
+    body: JSON.stringify({ email, password, role }),
   });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Gagal menambahkan santri');
-  }
-  return response.json();
 };
 
-// Fungsi untuk menghapus santri
-export const deleteSantri = async (id: string, token: string) => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/santri/${id}`, {
+
+// =========================================
+//         FUNGSI DASHBOARD
+// =========================================
+
+export const getDashboardStats = () => {
+  return fetchAPI('/santri/stats');
+};
+
+export const getTopSantriBySaldo = (limit = 5) => {
+  return fetchAPI(`/santri/top-saldo?limit=${limit}`);
+};
+
+
+// =========================================
+//           FUNGSI SANTRI
+// =========================================
+
+export const getSantriList = () => {
+  return fetchAPI('/santri');
+};
+
+export const getSantriDetail = (id: string) => {
+  return fetchAPI(`/santri/${id}`);
+};
+
+export const createSantri = (santriData: { name: string; kelas: string; jurusan: string; }) => {
+  return fetchAPI('/santri', {
+    method: 'POST',
+    body: JSON.stringify(santriData),
+  });
+};
+
+export const updateSantriDetail = (id: string, santriData: { name: string, kelas: string }) => {
+  return fetchAPI(`/santri/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(santriData),
+  });
+};
+
+export const deleteSantri = (id: string) => {
+  return fetchAPI(`/santri/${id}`, {
     method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    }
   });
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || 'Gagal menghapus santri');
-  }
-  // Biasanya DELETE request tidak mengembalikan body, cukup cek status OK
-  return { message: 'Santri berhasil dihapus' };
+};
+
+export const deductSantriBalance = (id: string, amount: number, description: string) => {
+  return fetchAPI(`/santri/${id}/deduct`, {
+    method: 'PATCH',
+    body: JSON.stringify({ jumlah: amount, deskripsi: description }),
+  });
 };
 
 
-export const deductSantriBalance = async (id: string, amount: number, description: string, token: string) => {
-    const numericId = parseInt(id, 10);
-    const body = { jumlah: amount, deskripsi: description };
+// =========================================
+//      FUNGSI TRANSAKSI & STOK BARANG
+// =========================================
 
-    const response = await fetch(`${API_BASE_URL}/santri/${numericId}/deduct`, {
-        method: 'PATCH',
-        headers: { 
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-    });
-    const responseData = await response.json(); // Ambil data JSON dari respons
-
-    if (!response.ok) {
-        throw new Error(responseData.message || 'Gagal memotong saldo.');
-    }
-    // FIX: Kembalikan properti 'data' dari objek respons
-    return responseData.data;
+export const getSantriTransactions = (id: string) => {
+  return fetchAPI(`/transaksi/santri/${id}`);
 };
 
-// ... (fungsi updateSantriDetail dan getSantriTransactions jika ada)
-export const updateSantriDetail = async (id: string, data: { name: string, kelas: string }, token: string) => {
-    // Implementasi API call untuk update
-    return { success: true }; // Placeholder
-};
-
-export const getSantriTransactions = async (id: string, token: string) => {
-    // Implementasi API call untuk transaksi
-    return []; // Placeholder
-};
-
-// =========================================STOK BARANG===========================================================
-
-// Tipe data untuk item baru atau yang diupdate
 interface ItemData {
   nama: string;
   harga: number;
   jumlah: number;
   kategori: string;
-  gambar?: string; // Opsional
+  gambar?: string;
 }
 
-// 1. Fungsi untuk mendapatkan semua data barang
-export const getItems = async (token: string) => {
-  const response = await fetch(`${API_BASE_URL}/items`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  const res = await response.json();
-  if (!response.ok) throw new Error(res.message || 'Gagal mengambil data barang.');
-  return res.data; // Mengembalikan array of items
+export const getItems = () => {
+  return fetchAPI('/items');
 };
 
-// 2. Fungsi untuk membuat barang baru
-export const createItem = async (itemData: ItemData, token: string) => {
-  const response = await fetch(`${API_BASE_URL}/items`, {
+export const createItem = (itemData: ItemData) => {
+  return fetchAPI('/items', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(itemData),
   });
-  const res = await response.json();
-  if (!response.ok) throw new Error(res.message || 'Gagal menambah barang baru.');
-  return res.data;
 };
 
-// 3. Fungsi untuk mengupdate data barang
-export const updateItem = async (id: number, itemData: Partial<ItemData>, token: string) => {
-  const response = await fetch(`${API_BASE_URL}/items/${id}`, {
+export const updateItem = (id: number, itemData: Partial<ItemData>) => {
+  return fetchAPI(`/items/${id}`, {
     method: 'PATCH',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
     body: JSON.stringify(itemData),
   });
-  const res = await response.json();
-  if (!response.ok) throw new Error(res.message || 'Gagal mengupdate barang.');
-  return res.data;
 };
 
-// 4. Fungsi untuk menghapus barang
-export const deleteItem = async (id: number, token: string) => {
-  const response = await fetch(`${API_BASE_URL}/items/${id}`, {
+export const deleteItem = (id: number) => {
+  return fetchAPI(`/items/${id}`, {
     method: 'DELETE',
-    headers: { 'Authorization': `Bearer ${token}` },
   });
-  if (response.status !== 204 && response.status !== 200) { // DELETE bisa mengembalikan 204 No Content
-    const res = await response.json();
-    throw new Error(res.message || 'Gagal menghapus barang.');
-  }
-  return { success: true };
 };

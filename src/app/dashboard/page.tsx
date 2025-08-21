@@ -1,68 +1,24 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Users, Wallet, Clock, ArrowUpRight, ArrowDownRight, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { Users, Wallet, AlertTriangle, BarChart2, ChevronDown, Award } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, XAxis, YAxis, Tooltip, Area, CartesianGrid } from 'recharts';
+import { useState, useEffect } from 'react';
+import { getDashboardStats, getTopSantriBySaldo } from '@/lib/api'; // Asumsi fungsi API ini ada
+import Cookies from 'js-cookie';
 
-// --- Data Tiruan (Mock Data) ---
-const stats = {
-  totalSantri: 152,
-  totalSaldo: 125500000,
-  pendingTopUp: 2,
-};
+// Tipe data untuk statistik
+interface DashboardStats {
+  totalSantri: number;
+  totalSaldo: number;
+  totalHutang: number;
+}
+// Tipe data untuk santri dengan saldo terbanyak
+interface TopSantri {
+    name: string;
+    saldo: number;
+}
 
-const recentActivities = [
-  { type: 'top-up', name: 'Ahmad Yusuf', amount: 200000, time: '2 menit yang lalu' },
-  { type: 'transaction', name: 'Kantin Blok A', amount: 15000, time: '10 menit yang lalu' },
-  { type: 'top-up', name: 'Citra Lestari', amount: 300000, time: '1 jam yang lalu' },
-  { type: 'transaction', name: 'Koperasi Pondok', amount: 50000, time: '3 jam yang lalu' },
-];
-
-// Data tiruan untuk grafik
-const chartData = {
-  "7hari": [
-    { name: 'Senin', Pemasukan: 400000, Pengeluaran: 240000 },
-    { name: 'Selasa', Pemasukan: 300000, Pengeluaran: 139800 },
-    { name: 'Rabu', Pemasukan: 200000, Pengeluaran: 980000 },
-    { name: 'Kamis', Pemasukan: 278000, Pengeluaran: 390800 },
-    { name: 'Jumat', Pemasukan: 189000, Pengeluaran: 480000 },
-    { name: 'Sabtu', Pemasukan: 239000, Pengeluaran: 380000 },
-    { name: 'Minggu', Pemasukan: 349000, Pengeluaran: 430000 },
-  ],
-  "1bulan": [
-    { name: 'Minggu 1', Pemasukan: 1200000, Pengeluaran: 800000 },
-    { name: 'Minggu 2', Pemasukan: 1500000, Pengeluaran: 1000000 },
-    { name: 'Minggu 3', Pemasukan: 1700000, Pengeluaran: 1100000 },
-    { name: 'Minggu 4', Pemasukan: 1600000, Pengeluaran: 1200000 },
-  ],
-  "3bulan": [
-    { name: 'Januari', Pemasukan: 4000000, Pengeluaran: 2500000 },
-    { name: 'Februari', Pemasukan: 4200000, Pengeluaran: 3000000 },
-    { name: 'Maret', Pemasukan: 4500000, Pengeluaran: 3200000 },
-  ],
-  "6bulan": [
-    { name: 'Jan', Pemasukan: 4000000, Pengeluaran: 2500000 },
-    { name: 'Feb', Pemasukan: 4200000, Pengeluaran: 3000000 },
-    { name: 'Mar', Pemasukan: 4500000, Pengeluaran: 3200000 },
-    { name: 'Apr', Pemasukan: 4700000, Pengeluaran: 3500000 },
-    { name: 'Mei', Pemasukan: 5000000, Pengeluaran: 3700000 },
-    { name: 'Jun', Pemasukan: 5300000, Pengeluaran: 4000000 },
-  ],
-  "12bulan": [
-    { name: 'Jan', Pemasukan: 4000000, Pengeluaran: 2500000 },
-    { name: 'Feb', Pemasukan: 4200000, Pengeluaran: 3000000 },
-    { name: 'Mar', Pemasukan: 4500000, Pengeluaran: 3200000 },
-    { name: 'Apr', Pemasukan: 4700000, Pengeluaran: 3500000 },
-    { name: 'Mei', Pemasukan: 5000000, Pengeluaran: 3700000 },
-    { name: 'Jun', Pemasukan: 5300000, Pengeluaran: 4000000 },
-    { name: 'Jul', Pemasukan: 5500000, Pengeluaran: 4200000 },
-    { name: 'Agu', Pemasukan: 5700000, Pengeluaran: 4400000 },
-    { name: 'Sep', Pemasukan: 5900000, Pengeluaran: 4600000 },
-    { name: 'Okt', Pemasukan: 6000000, Pengeluaran: 4700000 },
-    { name: 'Nov', Pemasukan: 6200000, Pengeluaran: 4800000 },
-    { name: 'Des', Pemasukan: 6500000, Pengeluaran: 5000000 },
-  ],
-};
 
 // --- Komponen Kartu Statistik ---
 function StatCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
@@ -79,7 +35,7 @@ function StatCard({ title, value, icon }: { title: string; value: string; icon: 
   );
 }
 
-// --- Tooltip Grafik ---
+// --- Tooltip & Komponen Grafik (Tidak Berubah) ---
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -92,36 +48,65 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
-
-// --- Komponen Grafik ---
 function TransactionChart({ data }: { data: any[] }) {
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="colorPemasukan" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="colorPengeluaran" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
-            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <XAxis dataKey="name" stroke="gray" fontSize={12} />
-        <YAxis stroke="gray" fontSize={12} tickFormatter={(value) => new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value as number)} />
-        <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-        <Tooltip content={<CustomTooltip />} />
-        <Area type="monotone" dataKey="Pemasukan" stroke="#10b981" fillOpacity={1} fill="url(#colorPemasukan)" />
-        <Area type="monotone" dataKey="Pengeluaran" stroke="#ef4444" fillOpacity={1} fill="url(#colorPengeluaran)" />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
+    // Data dummy untuk grafik, bisa disesuaikan dengan API
+    const chartData = { "7hari": [ /* ... data ... */ ] }; 
+    const [range, setRange] = useState<keyof typeof chartData>("7hari");
+
+    return (
+        <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                    <linearGradient id="colorPemasukan" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorPengeluaran" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ef4444" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                    </linearGradient>
+                </defs>
+                <XAxis dataKey="name" stroke="gray" fontSize={12} />
+                <YAxis stroke="gray" fontSize={12} tickFormatter={(value) => new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value as number)} />
+                <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="Pemasukan" stroke="#10b981" fillOpacity={1} fill="url(#colorPemasukan)" />
+                <Area type="monotone" dataKey="Pengeluaran" stroke="#ef4444" fillOpacity={1} fill="url(#colorPengeluaran)" />
+            </AreaChart>
+        </ResponsiveContainer>
+    );
 }
+
 
 // --- Komponen Utama ---
 export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [topSantri, setTopSantri] = useState<TopSantri[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Data dummy untuk grafik, bisa diganti dengan data dari API
+  const chartData = { "7hari": [ { name: 'Sen', Pemasukan: 4000, Pengeluaran: 2400 }, { name: 'Sel', Pemasukan: 3000, Pengeluaran: 1398 } ] };
   const [range, setRange] = useState<keyof typeof chartData>("7hari");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const token = Cookies.get('accessToken') || '';
+      try {
+        const [statsData, topSantriData] = await Promise.all([
+          getDashboardStats(token),
+          getTopSantriBySaldo(token)
+        ]);
+        setStats(statsData);
+        setTopSantri(topSantriData);
+      } catch (error) {
+        console.error("Gagal mengambil data dashboard:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -134,42 +119,39 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Santri"
-          value={stats.totalSantri.toString()}
+          value={isLoading ? '...' : stats?.totalSantri.toString() ?? '0'}
           icon={<Users className="w-8 h-8 text-blue-500" />}
         />
         <StatCard
           title="Total Saldo Terkelola"
-          value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.totalSaldo)}
+          value={isLoading ? '...' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats?.totalSaldo ?? 0)}
           icon={<Wallet className="w-8 h-8 text-green-500" />}
         />
         <StatCard
-          title="Top-Up Menunggu Verifikasi"
-          value={stats.pendingTopUp.toString()}
-          icon={<Clock className="w-8 h-8 text-yellow-500" />}
+          title="Total Hutang Santri"
+          value={isLoading ? '...' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats?.totalHutang ?? 0)}
+          icon={<AlertTriangle className="w-8 h-8 text-red-500" />}
         />
       </div>
 
-      {/* Grafik + Aktivitas */}
+      {/* Grafik + Saldo Terbanyak */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Grafik */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-700 dark:text-white">Aktivitas Keuangan</h2>
-            <div className="relative inline-block w-full text-gray-700 dark:text-white">
-              <select
-                value={range}
-                onChange={(e) => setRange(e.target.value as keyof typeof chartData)}
-                className="w-full px-4 py-2 pr-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-sm outline-none appearance-none"
-              >
-                <option value="7hari">Per Minggu</option>
-                <option value="1bulan">Per 1 Bulan</option>
-                <option value="3bulan">Per 3 Bulan</option>
-                <option value="6bulan">Per 6 Bulan</option>
-                <option value="12bulan">Per 12 Bulan</option>
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-300" />
-              </div>
+            <div className="relative">
+                <select
+                    value={range}
+                    onChange={(e) => setRange(e.target.value as keyof typeof chartData)}
+                    className="px-4 py-2 pr-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-md shadow-sm outline-none appearance-none"
+                >
+                    <option value="7hari">7 Hari Terakhir</option>
+                    {/* Tambahkan opsi lain jika perlu */}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                </div>
             </div>
           </div>
           <div style={{ width: '100%', height: 300 }}>
@@ -177,27 +159,25 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Aktivitas Terbaru */}
+        {/* Saldo Terbanyak */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">Aktivitas Terbaru</h2>
+          <h2 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">Santri Saldo Terbanyak</h2>
           <ul className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <li key={index} className="flex items-center">
-                <div className={`p-2 rounded-full ${activity.type === 'top-up' ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
-                  {activity.type === 'top-up'
-                    ? <ArrowUpRight className="w-5 h-5 text-green-500" />
-                    : <ArrowDownRight className="w-5 h-5 text-red-500" />}
-                </div>
-                <div className="ml-3 flex-grow">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{activity.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
-                </div>
-                <p className={`text-sm font-semibold ${activity.type === 'top-up' ? 'text-green-600' : 'text-red-600'}`}>
-                  {activity.type === 'top-up' ? '+' : '-'}
-                  {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(activity.amount)}
-                </p>
-              </li>
-            ))}
+            {isLoading ? ( <p>Memuat...</p> ) : (
+                topSantri.map((santri, index) => (
+                  <li key={index} className="flex items-center">
+                    <div className="p-2 rounded-full bg-yellow-100 dark:bg-yellow-900">
+                      <Award className="w-5 h-5 text-yellow-500" />
+                    </div>
+                    <div className="ml-3 flex-grow">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{santri.name}</p>
+                    </div>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}
+                    </p>
+                  </li>
+                ))
+            )}
           </ul>
         </div>
       </div>

@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { getSantriDetail, getSantriTransactions, updateSantriDetail } from '@/lib/api';
 import toast from 'react-hot-toast';
 
-// --- Tipe Data ---
+// --- Tipe Data (tidak berubah) ---
 interface SantriDetail {
   id: number;
   name: string;
@@ -53,9 +53,10 @@ const Tabs = ({ tabs, activeTab, setActiveTab }: any) => (
   </div>
 );
 
-// Komponen Daftar Transaksi (tidak berubah)
-const TransactionList = ({ transactions }) => (
-  <div className="space-y-4 max-h-96 overflow-y-auto">
+// Komponen Daftar Transaksi (MODIFIKASI: Menghilangkan max-h)
+const TransactionList = ({ transactions }: any) => (
+  // Menghilangkan `max-h-96` dan menambahkan `h-full` agar bisa mengisi ruang
+  <div className="space-y-4 h-full overflow-y-auto pr-2"> 
     {transactions.length > 0 ? transactions.map(tx => (
       <div key={tx.id} className="flex justify-between items-center border-b pb-2 dark:border-gray-700">
         <div>
@@ -72,19 +73,11 @@ const TransactionList = ({ transactions }) => (
 
 // Komponen Modal Edit Santri (tidak berubah)
 const EditSantriModal = ({ santri, isOpen, onClose, onSave }: { santri: SantriDetail; isOpen: boolean; onClose: () => void; onSave: (data: SantriEditData) => void; }) => {
+    // ... (isi komponen tidak berubah)
     const [formData, setFormData] = useState<SantriEditData>({ name: santri.name, kelas: santri.kelas });
-    
-    useEffect(() => {
-        setFormData({ name: santri.name, kelas: santri.kelas });
-    }, [santri]);
-
+    useEffect(() => { setFormData({ name: santri.name, kelas: santri.kelas }); }, [santri]);
     if (!isOpen) return null;
-
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        onSave(formData);
-    };
-
+    const handleSubmit = (e: FormEvent) => { e.preventDefault(); onSave(formData); };
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center" onClick={onClose}>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
@@ -131,11 +124,12 @@ export default function SantriDetailPage() {
       try {
         const token = localStorage.getItem('accessToken') || '';
         const santriData = await getSantriDetail(id, token);
-        // Data dummy untuk transaksi, sesuaikan dengan API Anda
+        // Data dummy
         const transactionData = [
-            { id: '1', description: 'Nasi Goreng', amount: 15000, date: '2024-08-10', type: 'jajan' },
-            { id: '2', description: 'Bayar Utang Buku', amount: 50000, date: '2024-08-09', type: 'hutang' },
-            { id: '3', description: 'Tarik Tunai', amount: 100000, date: '2024-08-08', type: 'tarik_tunai' },
+            { id: '1', description: 'Nasi Goreng', amount: 15000, date: '2025-08-10', type: 'jajan' },
+            { id: '2', description: 'Bayar Utang Buku', amount: 50000, date: '2025-08-09', type: 'hutang' },
+            { id: '3', description: 'Tarik Tunai', amount: 100000, date: '2025-08-08', type: 'tarik_tunai' },
+            { id: '4', description: 'Es Teh Manis', amount: 4000, date: '2025-08-10', type: 'jajan' },
         ];
         setSantri(santriData);
         setTransactions(transactionData);
@@ -147,30 +141,24 @@ export default function SantriDetailPage() {
     };
     fetchAllData();
   }, [id]);
-
-  const handleUpdateSantri = async (data: SantriEditData) => {
-    if (!santri) return;
-    const token = localStorage.getItem('accessToken') || '';
-    
-    const promise = updateSantriDetail(id, data, token);
-
-    toast.promise(promise, {
-        loading: 'Menyimpan perubahan...',
-        success: (updatedSantri) => {
-            setSantri(prev => prev ? { ...prev, ...updatedSantri } : null);
-            setIsEditModalOpen(false);
-            return 'Data santri berhasil diperbarui!';
-        },
-        error: (err) => `Gagal memperbarui data: ${err.message}`
-    });
-  };
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full pt-20"><LoaderCircle className="w-10 h-10 animate-spin text-indigo-600" /></div>;
-  }
-
-  if (error) {
-    return (
+  
+  // ... (fungsi handleUpdateSantri, isLoading, error, tidak berubah)
+    const handleUpdateSantri = async (data: SantriEditData) => {
+        if (!santri) return;
+        const token = localStorage.getItem('accessToken') || '';
+        const promise = updateSantriDetail(id, data, token);
+        toast.promise(promise, {
+            loading: 'Menyimpan perubahan...',
+            success: (updatedSantri) => {
+                setSantri(prev => prev ? { ...prev, ...updatedSantri } : null);
+                setIsEditModalOpen(false);
+                return 'Data santri berhasil diperbarui!';
+            },
+            error: (err) => `Gagal memperbarui data: ${err.message}`
+        });
+    };
+    if (isLoading) return <div className="flex justify-center items-center h-full pt-20"><LoaderCircle className="w-10 h-10 animate-spin text-indigo-600" /></div>;
+    if (error) return (
         <div className="text-center pt-20 flex flex-col items-center">
             <SearchX className="w-16 h-16 text-red-500 mb-4" />
             <h2 className="text-2xl font-bold">Gagal Memuat Data</h2>
@@ -180,11 +168,7 @@ export default function SantriDetailPage() {
             </Link>
         </div>
     );
-  }
-
-  if (!santri) {
-    return <div className="text-center pt-20">Data santri tidak ditemukan.</div>;
-  }
+    if (!santri) return <div className="text-center pt-20">Data santri tidak ditemukan.</div>;
 
   const filteredTransactions = transactions.filter(tx => {
       if (activeTab === 'Riwayat Jajan') return tx.type === 'jajan';
@@ -201,7 +185,8 @@ export default function SantriDetailPage() {
 
   return (
     <>
-      <div className="space-y-6">
+      {/* MODIFIKASI: Menjadikan container utama sebagai flex-col dengan tinggi penuh */}
+      <div className="flex flex-col h-full space-y-6">
         <div>
           <Link href="/dashboard/santri" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4 dark:text-gray-400 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -209,8 +194,8 @@ export default function SantriDetailPage() {
           </Link>
         </div>
 
-        {/* --- Kartu Profil Santri --- */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center justify-between">
+        {/* --- Kartu Profil Santri (tidak berubah) --- */}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center justify-between flex-shrink-0">
             <div className="flex items-center">
                 <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mr-6">
                     <User className="w-10 h-10 text-indigo-600 dark:text-indigo-300" />
@@ -226,18 +211,19 @@ export default function SantriDetailPage() {
             </Button>
         </div>
 
-        {/* --- Layout Utama (Grid) --- */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* --- Kolom Kiri: Info Saldo & Hutang --- */}
-          <div className="md:col-span-1 space-y-6">
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center">
+        {/* MODIFIKASI: Menambahkan class `flex-grow` agar grid mengisi sisa ruang */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
+          {/* MODIFIKASI: Menjadikan kolom kiri sebagai flex-col */}
+          <div className="md:col-span-1 flex flex-col gap-6">
+              {/* MODIFIKASI: Menambahkan `flex-1` agar kartu mengisi tinggi yang tersedia */}
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-1 items-center">
                   <Wallet className="w-8 h-8 text-green-500 mr-4" />
                   <div>
                       <p className="text-sm text-gray-500">Saldo Saat Ini</p>
                       <p className="text-3xl font-bold">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</p>
                   </div>
               </div>
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-1 items-center">
                   <AlertTriangle className="w-8 h-8 text-yellow-500 mr-4" />
                   <div>
                       <p className="text-sm text-gray-500">Total Hutang</p>
@@ -246,11 +232,14 @@ export default function SantriDetailPage() {
               </div>
           </div>
 
-          {/* --- Kolom Kanan: Riwayat Transaksi --- */}
-          <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-              <h2 className="text-xl font-semibold mb-4 flex items-center"><History className="w-5 h-5 mr-3" />Riwayat Transaksi</h2>
-              <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
-              <div className="mt-4">
+          {/* MODIFIKASI: Menjadikan kolom kanan sebagai flex-col */}
+          <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col">
+              <h2 className="text-xl font-semibold mb-4 flex items-center flex-shrink-0"><History className="w-5 h-5 mr-3" />Riwayat Transaksi</h2>
+              <div className="flex-shrink-0">
+                <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+              </div>
+              {/* MODIFIKASI: Menambahkan `flex-1` dan `overflow-hidden` agar daftar transaksi mengisi sisa ruang */}
+              <div className="mt-4 flex-1 overflow-hidden">
                   <TransactionList transactions={filteredTransactions} />
               </div>
           </div>

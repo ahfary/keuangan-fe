@@ -1,13 +1,12 @@
-// src/components/layout/Sidebar.tsx
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Users, DollarSign, ShoppingCart, BarChart2, ChevronDown, ChevronRight, Circle } from 'lucide-react';
+import Cookies from 'js-cookie'; // <-- 1. Impor js-cookie
 
-// Tipe untuk item menu
+// Tipe untuk item menu (tidak berubah)
 interface NavItem {
   href: string;
   icon: React.ElementType;
@@ -15,7 +14,7 @@ interface NavItem {
   submenu?: NavItem[];
 }
 
-// --- KONFIGURASI MENU ---
+// --- KONFIGURASI MENU (tidak berubah) ---
 const adminMenu: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/dashboard/santri', icon: Users, label: 'Santri' },
@@ -26,12 +25,12 @@ const adminMenu: NavItem[] = [
 
 const waliSantriMenu = (santriId: string | null): NavItem[] => [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/dashboard/topup', icon: DollarSign, label: 'Riwayat Transfer' }, // Asumsi "Riwayat Transfer" adalah halaman Top Up
+  { href: '/dashboard/topup', icon: DollarSign, label: 'Riwayat Transfer' },
   {
-    href: '#', // Tautan utama tidak aktif
+    href: '#',
     icon: Users,
     label: 'Santri',
-    submenu: santriId ? [ // Hanya tampilkan submenu jika santriId ada
+    submenu: santriId ? [
       { href: `/dashboard/santri/${santriId}#jajan`, icon: Circle, label: 'Riwayat Jajan' },
       { href: `/dashboard/santri/${santriId}#hutang`, icon: Circle, label: 'Riwayat Hutang' },
       { href: `/dashboard/santri/${santriId}#tunai`, icon: Circle, label: 'Riwayat Tarik Tunai' },
@@ -39,6 +38,8 @@ const waliSantriMenu = (santriId: string | null): NavItem[] => [
   },
 ];
 
+
+// --- Komponen NavLink dan CollapsibleNavLink (tidak berubah) ---
 const NavLink = ({ item, isSubmenu = false }: { item: NavItem; isSubmenu?: boolean; }) => {
     const pathname = usePathname();
     const isActive = pathname === item.href;
@@ -90,25 +91,27 @@ const CollapsibleNavLink = ({ item }: { item: NavItem }) => {
     );
 }
 
+
 export default function Sidebar() {
   const [menuItems, setMenuItems] = useState<NavItem[]>([]);
 
   useEffect(() => {
-    // Ambil role dari localStorage (hanya berjalan di client-side)
-    const role = localStorage.getItem('userRole');
+    // --- PERUBAHAN DI SINI: Gunakan Cookies ---
+    // 2. Ambil role dan santriId dari cookies
+    const role = Cookies.get('userRole');
     
     if (role === 'wali santri') {
-        const santriId = localStorage.getItem('santriId');
+        const santriId = Cookies.get('santriId') || null;
         setMenuItems(waliSantriMenu(santriId));
     } else {
-        // Default ke admin jika role tidak ada atau berbeda
+        // Default ke menu admin
         setMenuItems(adminMenu);
     }
   }, []);
 
   return (
     <aside className="w-64 h-screen bg-white dark:bg-gray-800 border-r dark:border-gray-700 p-4">
-      <div className="text-2xl font-bold text-indigo-600 mb-8">Sistem Keuangan</div>
+      <div className="text-2xl font-bold text-indigo-600 mb-8">SakuSantri</div>
       <nav className="space-y-2">
         {menuItems.map((item) => (
             item.submenu ? <CollapsibleNavLink key={item.label} item={item} /> : <NavLink key={item.label} item={item} />
