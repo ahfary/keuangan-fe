@@ -2,7 +2,7 @@ import Cookies from 'js-cookie';
 
 // 1. Konfigurasi dasar
 // Pastikan variabel ini ada di file .env.local Anda
-const API_BASE_URL = 'https://keuangan-santri-be.vercel.app/';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'; // Ganti dengan URL backend Anda
 
 /**
  * Fungsi helper terpusat untuk melakukan fetch request ke API.

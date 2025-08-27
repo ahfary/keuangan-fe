@@ -18,9 +18,8 @@ interface NavItem {
 const adminMenu: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'Dashboard' },
   { href: '/dashboard/santri', icon: Users, label: 'Santri' },
-  { href: '/dashboard/topup', icon: DollarSign, label: 'Top Up' },
   { href: '/dashboard/kantin', icon: ShoppingCart, label: 'Kantin' },
-  { href: '/dashboard/laporan', icon: BarChart2, label: 'Laporan' },
+  // { href: '/dashboard/laporan', icon: BarChart2, label: 'Laporan' },
 ];
 
 const waliSantriMenu = (santriId: string | null): NavItem[] => [

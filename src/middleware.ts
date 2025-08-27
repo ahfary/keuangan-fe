@@ -7,12 +7,12 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value;
   const userRole = request.cookies.get("userRole")?.value;
 
-  // 2. Jika salah satu dari token atau role tidak ada
-  if (!accessToken && !userRole) {
-    // Redirect ke halaman login
-    // new URL() digunakan untuk membuat URL absolut dari path relatif
-    return NextResponse.redirect(new URL("/auth/login", request.url));
-  }
+  // // 2. Jika salah satu dari token atau role tidak ada
+  // if (!accessToken && !userRole) {
+  //   // Redirect ke halaman login
+  //   // new URL() digunakan untuk membuat URL absolut dari path relatif
+  //   return NextResponse.redirect(new URL("/auth/login", request.url));
+  // }
   
   return NextResponse.next();
   // 3. Jika token dan role ada, lanjutkan ke halaman yang diminta

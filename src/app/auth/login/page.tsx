@@ -28,6 +28,8 @@ export default function LoginPage() {
     toast.promise(promise, {
       loading: 'Mencoba masuk...',
       success: (data) => {
+
+        console.log('Response data:', data); // Debug: lihat data respons
         if (data.accessToken && data.role) {
             Cookies.set("accessToken", data.accessToken, { expires: 1, secure: true });
             Cookies.set("userRole", data.role, { expires: 1, secure: true });
