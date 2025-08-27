@@ -15,36 +15,40 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("Admin"); // <-- State baru untuk role
+  const [role, setRole] = useState("Admin"); // Default role
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Kirim email, password, dan role ke fungsi API
     const promise = loginUser(email, password, role);
 
     toast.promise(promise, {
       loading: 'Mencoba masuk...',
       success: (data) => {
-
-        console.log('Response data:', data); // Debug: lihat data respons
-        if (data.accessToken && data.role) {
-            Cookies.set("accessToken", data.accessToken, { expires: 1, secure: true });
-            Cookies.set("userRole", data.role, { expires: 1, secure: true });
-
-            if (data.role === 'wali santri' && data.santriId) {
-                Cookies.set('santriId', data.santriId, { expires: 1, secure: true });
+        console.log(data);
+        if (data.access_token && data.role) {
+          Cookies.set("accessToken", data.accessToken, { expires: 1, secure: true });
+          Cookies.set("userRole", data.role, { expires: 1, secure: true });
+          
+          // --- LOGIKA REDIRECT BERDASARKAN PERAN ---
+          if (data.role === 'wali santri') {
+            if(data.santriId) {
+              Cookies.set('santriId', data.santriId, { expires: 1, secure: true });
             }
-            
-            router.push("/dashboard");
-            return 'Login berhasil!';
+            router.push("/dashboard/walsan"); // Arahkan ke dashboard walsan
+          } else {
+            router.push("/dashboard/admin"); // Arahkan ke dashboard admin
+          }
+          
+          return 'Login berhasil!';
         } else {
-            throw new Error("Respons server tidak valid.");
+          throw new Error("Respons server tidak valid.");
         }
       },
-      error: (err) => `Gagal: ${err.message || "Gagal terhubung ke server."}`
+      error: (err) => `Gagal: ${err.message || "Gagal terhubung ke server." + console.log(err)}`
+
     }).finally(() => setIsLoading(false));
   };
 
@@ -94,7 +98,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* --- Dropdown Role --- */}
+          {/* Dropdown Role */}
           <div className="space-y-2">
             <Label htmlFor="role" className="text-white text-sm block mb-2">
                 Masuk sebagai
@@ -104,9 +108,8 @@ export default function LoginPage() {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-14 bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-4 appearance-none"
+                className="w-full h-14 bg-transparent border border-white/40 text-white rounded-lg px-4 appearance-none"
                 style={{
-                  // Menambahkan panah dropdown kustom
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
                   backgroundRepeat: 'no-repeat',
@@ -114,11 +117,10 @@ export default function LoginPage() {
                   paddingRight: '2.5rem',
                 }}
             >
-                <option value="admin" className="bg-[#0B1224]">Admin</option>
-                <option value="wali santri" className="bg-[#0B1224]">Wali Santri</option>
+                <option value="Admin" className="bg-[#0B1224] capitalize">Admin</option>
+                <option value="Walisantri" className="bg-[#0B1224]">Wali Santri</option>
             </select>
           </div>
-
 
           <div className="pt-4">
             <Button

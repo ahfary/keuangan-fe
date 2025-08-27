@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, DollarSign, ShoppingCart, BarChart2, ChevronDown, ChevronRight, Circle } from 'lucide-react';
-import Cookies from 'js-cookie'; // <-- 1. Impor js-cookie
+import { Home, Users, DollarSign, ShoppingCart, BarChart2, ChevronDown, ChevronRight, Circle, LogOut } from 'lucide-react';
+import Cookies from 'js-cookie';
+import { useRouter } from 'next/navigation';
 
-// Tipe untuk item menu (tidak berubah)
 interface NavItem {
   href: string;
   icon: React.ElementType;
@@ -14,31 +14,30 @@ interface NavItem {
   submenu?: NavItem[];
 }
 
-// --- KONFIGURASI MENU (tidak berubah) ---
+// --- KONFIGURASI MENU DENGAN ROUTE BARU ---
 const adminMenu: NavItem[] = [
-  { href: '/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/dashboard/santri', icon: Users, label: 'Santri' },
-  { href: '/dashboard/kantin', icon: ShoppingCart, label: 'Kantin' },
-  // { href: '/dashboard/laporan', icon: BarChart2, label: 'Laporan' },
+  { href: '/dashboard/admin', icon: Home, label: 'Dashboard' },
+  { href: '/dashboard/admin/santri', icon: Users, label: 'Santri' },
+  { href: '/dashboard/admin/topup', icon: DollarSign, label: 'Top Up' },
+  { href: '/dashboard/admin/kantin', icon: ShoppingCart, label: 'Kantin' },
+  { href: '/dashboard/admin/laporan', icon: BarChart2, label: 'Laporan' },
 ];
 
 const waliSantriMenu = (santriId: string | null): NavItem[] => [
-  { href: '/dashboard', icon: Home, label: 'Dashboard' },
-  { href: '/dashboard/topup', icon: DollarSign, label: 'Riwayat Transfer' },
+  { href: '/dashboard/walsan', icon: Home, label: 'Dashboard' },
+  { href: '/dashboard/walsan/transfer', icon: DollarSign, label: 'Riwayat Transfer' },
   {
-    href: '#',
+    href: '#', // Tautan utama tidak aktif
     icon: Users,
     label: 'Santri',
     submenu: santriId ? [
-      { href: `/dashboard/santri/${santriId}#jajan`, icon: Circle, label: 'Riwayat Jajan' },
-      { href: `/dashboard/santri/${santriId}#hutang`, icon: Circle, label: 'Riwayat Hutang' },
-      { href: `/dashboard/santri/${santriId}#tunai`, icon: Circle, label: 'Riwayat Tarik Tunai' },
+      { href: `/dashboard/walsan/santri/${santriId}#jajan`, icon: Circle, label: 'Riwayat Jajan' },
+      { href: `/dashboard/walsan/santri/${santriId}#hutang`, icon: Circle, label: 'Riwayat Hutang' },
+      { href: `/dashboard/walsan/santri/${santriId}#tunai`, icon: Circle, label: 'Riwayat Tarik Tunai' },
     ] : [],
   },
 ];
 
-
-// --- Komponen NavLink dan CollapsibleNavLink (tidak berubah) ---
 const NavLink = ({ item, isSubmenu = false }: { item: NavItem; isSubmenu?: boolean; }) => {
     const pathname = usePathname();
     const isActive = pathname === item.href;
@@ -90,32 +89,47 @@ const CollapsibleNavLink = ({ item }: { item: NavItem }) => {
     );
 }
 
-
 export default function Sidebar() {
   const [menuItems, setMenuItems] = useState<NavItem[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
-    // --- PERUBAHAN DI SINI: Gunakan Cookies ---
-    // 2. Ambil role dan santriId dari cookies
     const role = Cookies.get('userRole');
     
-    if (role === 'wali santri') {
+    if (role === 'Walisantri') {
         const santriId = Cookies.get('santriId') || null;
         setMenuItems(waliSantriMenu(santriId));
     } else {
-        // Default ke menu admin
         setMenuItems(adminMenu);
     }
   }, []);
 
+  const handleLogout = () => {
+      Cookies.remove('accessToken');
+      Cookies.remove('userRole');
+      Cookies.remove('santriId');
+      router.push('/auth/login');
+  };
+
   return (
-    <aside className="w-64 h-screen bg-white dark:bg-gray-800 border-r dark:border-gray-700 p-4">
-      <div className="text-2xl font-bold text-indigo-600 mb-8">SakuSantri</div>
-      <nav className="space-y-2">
-        {menuItems.map((item) => (
-            item.submenu ? <CollapsibleNavLink key={item.label} item={item} /> : <NavLink key={item.label} item={item} />
-        ))}
-      </nav>
+    <aside className="w-64 h-screen bg-white dark:bg-gray-800 border-r dark:border-gray-700 p-4 flex flex-col justify-between">
+      <div>
+        <div className="text-2xl font-bold text-indigo-600 mb-8">SakuSantri</div>
+        <nav className="space-y-2">
+            {menuItems.map((item) => (
+                item.submenu ? <CollapsibleNavLink key={item.label} item={item} /> : <NavLink key={item.label} item={item} />
+            ))}
+        </nav>
+      </div>
+      <div>
+        <button 
+            onClick={handleLogout}
+            className="flex items-center w-full p-3 rounded-lg text-gray-600 hover:bg-red-100 dark:text-gray-300 dark:hover:bg-red-900/50 transition-colors"
+        >
+            <LogOut className="w-5 h-5 mr-4"/>
+            <span>Logout</span>
+        </button>
+      </div>
     </aside>
   );
 }

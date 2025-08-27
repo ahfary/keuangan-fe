@@ -1,34 +1,28 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-// Fungsi middleware utama
 export function middleware(request: NextRequest) {
-  // 1. Ambil cookie 'accessToken' dan 'userRole' dari request
-  const accessToken = request.cookies.get("accessToken")?.value;
-  const userRole = request.cookies.get("userRole")?.value;
+  const accessToken = request.cookies.get('accessToken')?.value;
+  const userRole = request.cookies.get('userRole')?.value;
 
-  // // 2. Jika salah satu dari token atau role tidak ada
-  // if (!accessToken && !userRole) {
-  //   // Redirect ke halaman login
-  //   // new URL() digunakan untuk membuat URL absolut dari path relatif
-  //   return NextResponse.redirect(new URL("/auth/login", request.url));
+  // if (!accessToken || !userRole) {
+  //   // Arahkan kembali ke halaman login jika tidak ada token/role
+  //   return NextResponse.redirect(new URL('/auth/login', request.url));
   // }
   
+  // // Logika tambahan: pastikan role sesuai dengan path
+  // const { pathname } = request.nextUrl;
+  // if (userRole === 'admin' && !pathname.startsWith('/dashboard/admin')) {
+  //     return NextResponse.redirect(new URL('/dashboard/admin', request.url));
+  // }
+  // if (userRole === 'wali santri' && !pathname.startsWith('/dashboard/walsan')) {
+  //     return NextResponse.redirect(new URL('/dashboard/walsan', request.url));
+  // }
+
   return NextResponse.next();
-  // 3. Jika token dan role ada, lanjutkan ke halaman yang diminta
 }
 
-// Konfigurasi matcher
+// Konfigurasi ini sudah benar
 export const config = {
-  /*
-   * Cocokkan semua path KECUALI yang memiliki:
-   * - api (rute API)
-   * - _next/static (file statis)
-   * - _next/image (file optimasi gambar)
-   * - favicon.ico (file ikon)
-   * Ini memastikan middleware hanya berjalan pada halaman yang relevan.
-   *
-   * Kita akan memproteksi semua rute di bawah /dashboard.
-   */
-  matcher: "/dashboard/:path*",
+  matcher: '/dashboard/:path*',
 };

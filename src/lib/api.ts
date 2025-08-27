@@ -2,7 +2,7 @@ import Cookies from 'js-cookie';
 
 // 1. Konfigurasi dasar
 // Pastikan variabel ini ada di file .env.local Anda
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000'; // Ganti dengan URL backend Anda
+const API_BASE_URL = 'https://keuangan-santri-be.vercel.app'; // Ganti dengan URL backend Anda
 
 /**
  * Fungsi helper terpusat untuk melakukan fetch request ke API.
@@ -45,6 +45,7 @@ const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
 // =========================================
 
 export const loginUser = async (email, password, role) => {
+  // console.log(email, password, role)
   return fetchAPI('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password, role }),
@@ -143,4 +144,48 @@ export const deleteItem = (id: number) => {
   return fetchAPI(`/items/${id}`, {
     method: 'DELETE',
   });
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export const createTopUpRequest = async (data: { santriId: string; amount: number; proof: File; }) => {
+    // Karena kita mengirim file, kita gunakan FormData
+    const formData = new FormData();
+    formData.append('santriId', data.santriId);
+    formData.append('amount', data.amount.toString());
+    formData.append('proof', data.proof);
+
+    // Kita tidak menggunakan fetchAPI helper karena headernya berbeda
+    const token = Cookies.get('accessToken');
+    const response = await fetch(`${API_BASE_URL}/topup/request`, { // Asumsi endpoint ini ada di BE
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            // 'Content-Type' akan diatur otomatis oleh browser untuk FormData
+        },
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal mengirim permintaan top-up.');
+    }
+
+    return response.json();
+};
+
+// Fungsi untuk mendapatkan riwayat top-up wali santri
+export const getTopUpHistory = (santriId: string) => {
+    return fetchAPI(`/topup/history/${santriId}`); // Asumsi endpoint ini ada di BE
 };
