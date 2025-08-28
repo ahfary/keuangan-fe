@@ -18,9 +18,9 @@ interface NavItem {
 const adminMenu: NavItem[] = [
   { href: '/dashboard/admin', icon: Home, label: 'Dashboard' },
   { href: '/dashboard/admin/santri', icon: Users, label: 'Santri' },
-  { href: '/dashboard/admin/topup', icon: DollarSign, label: 'Top Up' },
+  // { href: '/dashboard/admin/topup', icon: DollarSign, label: 'Top Up' },
   { href: '/dashboard/admin/kantin', icon: ShoppingCart, label: 'Kantin' },
-  { href: '/dashboard/admin/laporan', icon: BarChart2, label: 'Laporan' },
+  // { href: '/dashboard/admin/laporan', icon: BarChart2, label: 'Laporan' },
 ];
 
 const waliSantriMenu = (santriId: string | null): NavItem[] => [

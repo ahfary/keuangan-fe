@@ -257,7 +257,7 @@ export default function SantriPage() {
                                 <td className="p-4">{santri.jurusan}</td>
                                 <td className="p-4 font-mono">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.saldo)}</td>
                                 <td className="p-4 text-center">
-                                    <Link href={`/dashboard/santri/${santri.id}`}>
+                                    <Link href={`/dashboard/admin/santri/${santri.id}`}>
                                       <Button variant="outline" size="sm">Detail</Button>
                                     </Link>
                                 </td>
