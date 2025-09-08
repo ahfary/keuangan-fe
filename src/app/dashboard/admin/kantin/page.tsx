@@ -7,31 +7,31 @@ const kantinMenu = [
   {
     title: 'Manajemen Stok',
     description: 'Kelola daftar produk, tambah stok, dan atur harga jual.',
-    href: '/dashboard/kantin/stok',
+    href: '/dashboard/admin/kantin/stock',
     icon: <Archive className="w-10 h-10 text-blue-500" />,
   },
   {
     title: 'Data Penjualan',
     description: 'Lihat riwayat transaksi penjualan dari aplikasi kasir.',
-    href: '/dashboard/kantin/penjualan',
+    href: '/dashboard/admin/kantin/penjualan',
     icon: <ShoppingCart className="w-10 h-10 text-green-500" />,
   },
   {
     title: 'Laporan Harian',
     description: 'Akses jurnal akuntansi harian untuk pembukuan.',
-    href: '/dashboard/kantin/laporan-harian',
+    href: '/dashboard/admin/kantin/laporan-harian',
     icon: <BookText className="w-10 h-10 text-yellow-500" />,
   },
   {
     title: 'Rekap Pendapatan',
     description: 'Analisis dan rekapitulasi total pendapatan kantin.',
-    href: '/dashboard/kantin/pendapatan',
+    href: '/dashboard/admin/kantin/pendapatan',
     icon: <TrendingUp className="w-10 h-10 text-indigo-500" />,
   },
   {
     title: 'Manajemen Piutang',
     description: 'Catat dan kelola piutang dari pelanggan atau santri.',
-    href: '/dashboard/kantin/piutang',
+    href: '/dashboard/admin/kantin/piutang',
     icon: <BookUser className="w-10 h-10 text-red-500" />,
   },
 ];

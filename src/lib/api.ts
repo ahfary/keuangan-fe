@@ -75,7 +75,8 @@ export const getSantriList = () => {
 };
 
 export const getSantriDetail = (id: string) => {
-  return fetchAPI(`/santri/${id}`);
+  // BENARKAN: Ubah endpoint dari /santri/${id} menjadi /santri/detail/${id}
+  return fetchAPI(`/santri/detail/${id}`);
 };
 
 export const createSantri = (santriData: { name: string; kelas: string; jurusan: string; }) => {

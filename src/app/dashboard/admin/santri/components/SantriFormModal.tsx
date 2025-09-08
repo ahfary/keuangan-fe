@@ -98,7 +98,7 @@ export default function SantriFormModal({ isOpen, onClose, onSave, santriData }:
               />
             </div>
             <div>
-              <label htmlFor="dormitory" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Asrama</label>
+              <label htmlFor="dormitory" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Jurusan</label>
               <input
                 type="text"
                 id="dormitory"

@@ -26,7 +26,7 @@ import {
 const stats = {
   totalSantri: 152,
   totalSaldo: 125500000,
-  pendingTopUp: 2,
+  pendingTopUp: 250000,
 };
 
 const recentActivities = [
@@ -229,7 +229,7 @@ export default function DashboardPage() {
           icon={<Wallet className="w-8 h-8 text-green-500" />}
         />
         <StatCard
-          title="Top-Up Menunggu Verifikasi"
+          title="Total Hutang Santri"
           value={stats.pendingTopUp.toString()}
           icon={<Clock className="w-8 h-8 text-yellow-500" />}
         />

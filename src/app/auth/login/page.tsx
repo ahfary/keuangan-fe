@@ -74,6 +74,7 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="Masukan Email anda"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}

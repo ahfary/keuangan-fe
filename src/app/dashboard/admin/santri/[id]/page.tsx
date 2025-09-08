@@ -188,7 +188,7 @@ export default function SantriDetailPage() {
       {/* MODIFIKASI: Menjadikan container utama sebagai flex-col dengan tinggi penuh */}
       <div className="flex flex-col h-full space-y-6">
         <div>
-          <Link href="/dashboard/santri" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4 dark:text-gray-400 dark:hover:text-white">
+          <Link href="/dashboard/admin/santri" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4 dark:text-gray-400 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Kembali ke Daftar Santri
           </Link>
