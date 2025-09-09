@@ -44,7 +44,7 @@ const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
 //         FUNGSI AUTENTIKASI
 // =========================================
 
-export const loginUser = async (email, password, role) => {
+export const loginUser = async (email : any, password : any, role : any) => {
   // console.log(email, password, role)
   return fetchAPI('/auth/login', {
     method: 'POST',
@@ -190,3 +190,11 @@ export const createTopUpRequest = async (data: { santriId: string; amount: numbe
 export const getTopUpHistory = (santriId: string) => {
     return fetchAPI(`/topup/history/${santriId}`); // Asumsi endpoint ini ada di BE
 };
+
+
+export const createAccount = (data: { name: string; email: string; password: string; role: string; }) => {
+  return fetchAPI('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}

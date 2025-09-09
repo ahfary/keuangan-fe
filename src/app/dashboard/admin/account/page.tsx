@@ -7,43 +7,37 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
-import { loginUser } from "@/lib/api";
-import Cookies from 'js-cookie';
+import { createAccount } from "@/lib/api"; // Asumsi ada fungsi registerUser di api.ts
 import toast from "react-hot-toast";
+import Link from "next/link";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState("Admin"); // Default role
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError(null); 
+    setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Password dan konfirmasi password tidak cocok.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
-      const data = await loginUser(email, password, role);
-      if (data.access_token && data.role) {
-        Cookies.set("accessToken", data.accessToken, { expires: 1, secure: true });
-        Cookies.set("userRole", data.role, { expires: 1, secure: true });
-
-        if (data.role === 'wali santri') {
-          if(data.santriId) {
-            Cookies.set('santriId', data.santriId, { expires: 1, secure: true });
-          }
-          router.push("/dashboard/walsan");
-        } else {
-          router.push("/dashboard/admin");
-        }
-        toast.success('Login berhasil!');
-      } else {
-        throw new Error("Respons server tidak valid.");
-      }
+      await createAccount({ name, email, password, role });
+      toast.success("Pendaftaran berhasil! Silakan masuk.");
+      router.push("/auth/login");
     } catch (err: any) {
-      const errorMessage = err.message || "Gagal terhubung ke server.";
+      const errorMessage = err.message || "Gagal mendaftar.";
       setError(errorMessage);
       toast.error(`Gagal: ${errorMessage}`);
     } finally {
@@ -60,15 +54,32 @@ export default function LoginPage() {
         </div>
 
         <p className="text-white mb-10 text-lg text-center">
-          Silahkan Masuk terlebih dahulu
+          Silahkan buat akun anda
         </p>
 
-        <form onSubmit={handleLogin} className="w-full max-w-sm space-y-8">
+        <form onSubmit={handleRegister} className="w-full max-w-sm space-y-6">
           {error && (
-            <div className="bg-red-500/20 border border-red-500 text-red-300 text-sm rounded-lg p-4 text-center">
+            <div className="bg-red-500/20 border border-red-500 text-red-300 text-sm rounded-lg p-3 text-center">
               <p>{error}</p>
             </div>
           )}
+          {/* Name */}
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-white text-sm block mb-2">
+              Nama Lengkap
+            </Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Masukan nama lengkap anda"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={isLoading}
+              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-3"
+            />
+          </div>
+
           {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email" className="text-white text-sm block mb-2">
@@ -82,7 +93,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-4 bg-[#0B1224]/50"
+              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-3"
             />
           </div>
 
@@ -98,7 +109,24 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
-              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-4"
+              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-3"
+              required
+            />
+          </div>
+          
+          {/* Confirm Password */}
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-white text-sm block mb-2">
+              Konfirmasi Password
+            </Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              placeholder="Konfirmasi Password anda"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              disabled={isLoading}
+              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-3"
               required
             />
           </div>
@@ -106,14 +134,14 @@ export default function LoginPage() {
           {/* Dropdown Role */}
           <div className="space-y-2">
             <Label htmlFor="role" className="text-white text-sm block mb-2">
-                Masuk sebagai
+                Daftar sebagai
             </Label>
             <select
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 disabled={isLoading}
-                className="w-full h-14 bg-transparent border border-white/40 text-white rounded-lg px-4 appearance-none"
+                className="w-full h-12 bg-transparent border border-white/40 text-white rounded-lg px-4 appearance-none"
                 style={{
                   backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
                   backgroundPosition: 'right 0.5rem center',
@@ -123,6 +151,7 @@ export default function LoginPage() {
                 }}
             >
                 <option value="Admin" className="bg-[#0B1224] capitalize">Admin</option>
+                <option value="Kasir" className="bg-[#0B1224] capitalize">Kasir</option>
                 <option value="Walisantri" className="bg-[#0B1224]">Wali Santri</option>
             </select>
           </div>
@@ -131,10 +160,10 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#4F39F6] hover:bg-[#3e2fe0] text-white rounded-lg py-4 font-medium"
+              className="w-full bg-[#4F39F6] hover:bg-[#3e2fe0] text-white rounded-lg py-3 font-medium"
             >
               {isLoading && <LoaderCircle className="w-5 h-5 mr-2 animate-spin" />}
-              {isLoading ? "Memproses..." : "Masuk"}
+              {isLoading ? "Memproses..." : "Daftar"}
             </Button>
           </div>
         </form>
