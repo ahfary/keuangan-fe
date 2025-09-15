@@ -102,6 +102,11 @@ export const deductSantriBalance = (id: string, amount: number, description: str
   });
 };
 
+export const getSantriWithHutang = async () => {
+  const allSantri = await fetchAPI('/santri');
+  return allSantri.filter((santri: any) => santri.hutang > 0);
+};
+
 
 // =========================================
 //      FUNGSI TRANSAKSI & STOK BARANG
@@ -144,7 +149,19 @@ export const deleteItem = (id: number) => {
 };
 
 
+// DASHBOARD
 
+export const getTotalSantri = () => {
+  return fetchAPI('/santri/count');
+}
+
+export const getTotalSaldo = () => {
+  return fetchAPI('/santri/total-saldo');
+}
+
+export const getTotalHutang = () => {
+  return fetchAPI('/santri/hutang');
+}
 
 
 

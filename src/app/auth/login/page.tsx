@@ -123,7 +123,8 @@ export default function LoginPage() {
                 }}
             >
                 <option value="Admin" className="bg-[#0B1224] capitalize">Admin</option>
-                <option value="Walisantri" className="bg-[#0B1224]">Wali Santri</option>
+                {/* <option value="Admin" className="bg-[#0B1224] capitalize">Operator</option> */}
+                {/* <option value="Walisantri" className="bg-[#0B1224]">Wali Santri</option> */}
             </select>
           </div>
 

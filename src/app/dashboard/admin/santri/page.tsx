@@ -152,15 +152,10 @@ export default function SantriPage() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      const allIdsOnPage = new Set(paginatedSantri.map((s) => s.id));
-      const newSelection = new Set([...selectedSantri, ...allIdsOnPage]);
-      setSelectedSantri(newSelection);
+      const allFilteredIds = new Set(filteredSantri.map((s) => s.id));
+      setSelectedSantri(allFilteredIds);
     } else {
-      const idsOnPage = new Set(paginatedSantri.map((s) => s.id));
-      const newSelection = new Set(
-        [...selectedSantri].filter((id) => !idsOnPage.has(id))
-      );
-      setSelectedSantri(newSelection);
+      setSelectedSantri(new Set());
     }
   };
 
@@ -368,8 +363,8 @@ export default function SantriPage() {
                       className="cursor-pointer"
                       onChange={handleSelectAll}
                       checked={
-                        paginatedSantri.length > 0 &&
-                        paginatedSantri.every((s) => selectedSantri.has(s.id))
+                        filteredSantri.length > 0 &&
+                        selectedSantri.size === filteredSantri.length
                       }
                     />
                   </th>

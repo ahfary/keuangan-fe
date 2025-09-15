@@ -1,40 +1,112 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { getSantriWithHutang } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 // --- Tipe Data untuk Santri yang Berhutang ---
 interface SantriHutang {
   id: string;
-  nama: string;
+  name: string;
   kelas: string;
   jurusan: 'RPL' | 'TKJ';
   hutang: number;
 }
 
-// --- Data Tiruan (Mock Data) ---
-const mockHutangData: SantriHutang[] = [
-  { id: '1', nama: 'Ahmad Yusuf', kelas: 'XII', jurusan: 'RPL', hutang: 125000 },
-  { id: '2', nama: 'Budi Santoso', kelas: 'XI', jurusan: 'TKJ', hutang: 220000 },
-  { id: '3', nama: 'Citra Lestari', kelas: 'XII', jurusan: 'RPL', hutang: 75000 },
-  { id: '4', nama: 'Dewi Anggraini', kelas: 'X', jurusan: 'RPL', hutang: 92000 },
-  { id: '5', nama: 'Eko Prasetyo', kelas: 'XI', jurusan: 'RPL', hutang: 460000 },
-];
+const ITEMS_PER_PAGE = 6;
 
 export default function ManajemenHutangPage() {
-  const [dataHutang, setDataHutang] = useState<SantriHutang[]>(mockHutangData);
+  const [dataHutang, setDataHutang] = useState<SantriHutang[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'semua' | 'kelas' | 'jurusan'>('semua');
+  const [filterType, setFilterType] = useState<'semua' | 'kelas' | 'jurusan'>('semua');
+  const [selectedKelas, setSelectedKelas] = useState('');
+  const [selectedJurusan, setSelectedJurusan] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Logika untuk memfilter data berdasarkan pencarian dan filter
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getSantriWithHutang();
+        setDataHutang(data);
+      } catch (error) {
+        toast.error("Gagal mengambil data piutang santri.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // --- Logika Filter ---
+  const uniqueKelas = useMemo(
+    () => Array.from(new Set(dataHutang.map((s) => s.kelas))).sort(),
+    [dataHutang]
+  );
+
   const filteredData = useMemo(() => {
-    return dataHutang.filter(santri =>
-      santri.nama.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [dataHutang, searchTerm]);
+    return dataHutang.filter(santri => {
+      const matchesSearch = santri.name.toLowerCase().includes(searchTerm.toLowerCase());
+      if (filterType === 'kelas') {
+        return matchesSearch && (selectedKelas ? santri.kelas === selectedKelas : true);
+      }
+      if (filterType === 'jurusan') {
+        return matchesSearch && (selectedJurusan ? santri.jurusan === selectedJurusan : true);
+      }
+      return matchesSearch;
+    });
+  }, [dataHutang, searchTerm, filterType, selectedKelas, selectedJurusan]);
+
+  // --- Logika Pagination ---
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, currentPage]);
+
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const PaginationControls = () => (
+    <div className="flex justify-center items-center gap-2 mt-4">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="w-4 h-4" />
+      </Button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        <Button
+          key={page}
+          size="sm"
+          variant={currentPage === page ? "default" : "outline"}
+          onClick={() => handlePageChange(page)}
+        >
+          {page}
+        </Button>
+      ))}
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+      >
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -45,7 +117,6 @@ export default function ManajemenHutangPage() {
           <p className="mt-1 text-gray-600 dark:text-gray-400">Cek, filter, dan kelola data hutang santri.</p>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline">Filter Opsi</Button>
            <Button>
               <Plus className="w-4 h-4 mr-2" />
               Tambah Santri Hutang
@@ -64,14 +135,58 @@ export default function ManajemenHutangPage() {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Filter:</span>
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant={filter === 'semua' ? 'default' : 'outline'} onClick={() => setFilter('semua')}>Semua</Button>
-            <Button size="sm" variant={filter === 'kelas' ? 'default' : 'outline'} onClick={() => setFilter('kelas')}>Kelas</Button>
-            <Button size="sm" variant={filter === 'jurusan' ? 'default' : 'outline'} onClick={() => setFilter('jurusan')}>Jurusan</Button>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-gray-600">Filter:</span>
+              <Button
+                size="sm"
+                variant={filterType === "semua" ? "default" : "outline"}
+                onClick={() => setFilterType("semua")}
+              >
+                Semua
+              </Button>
+              <Button
+                size="sm"
+                variant={filterType === "kelas" ? "default" : "outline"}
+                onClick={() => setFilterType("kelas")}
+              >
+                Kelas
+              </Button>
+              <Button
+                size="sm"
+                variant={filterType === "jurusan" ? "default" : "outline"}
+                onClick={() => setFilterType("jurusan")}
+              >
+                Jurusan
+              </Button>
+            </div>
+
+            {filterType === "kelas" && (
+              <select
+                className="p-2 border rounded-md bg-white dark:bg-gray-700 text-sm w-full sm:w-auto"
+                value={selectedKelas}
+                onChange={(e) => setSelectedKelas(e.target.value)}
+              >
+                <option value="">Semua Kelas</option>
+                {uniqueKelas.map((k) => (
+                  <option key={k} value={k}>
+                    {k}
+                  </option>
+                ))}
+              </select>
+            )}
+            {filterType === "jurusan" && (
+              <select
+                className="p-2 border rounded-md bg-white dark:bg-gray-700 text-sm w-full sm:w-auto"
+                value={selectedJurusan}
+                onChange={(e) => setSelectedJurusan(e.target.value)}
+              >
+                <option value="">Semua Jurusan</option>
+                <option value="RPL">RPL</option>
+                <option value="TKJ">TKJ</option>
+              </select>
+            )}
           </div>
-        </div>
       </div>
 
       {/* --- Tabel Data Hutang --- */}
@@ -87,9 +202,14 @@ export default function ManajemenHutangPage() {
             </tr>
           </thead>
           <tbody className="divide-y dark:divide-gray-700">
-            {filteredData.map(santri => (
+            {isLoading ? (
+              <tr>
+                <td colSpan={5} className="text-center p-8">Memuat data...</td>
+              </tr>
+            ) : paginatedData.length > 0 ? (
+              paginatedData.map(santri => (
               <tr key={santri.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <td className="p-4 capitalize text-gray-900 dark:text-white">{santri.nama}</td>
+                <td className="p-4 capitalize text-gray-900 dark:text-white">{santri.name}</td>
                 <td className="p-4 text-gray-600 dark:text-gray-300">{santri.kelas}</td>
                 <td className="p-4 text-gray-600 dark:text-gray-300">{santri.jurusan}</td>
                 <td className="p-4 font-mono text-red-500 dark:text-red-400">
@@ -101,13 +221,20 @@ export default function ManajemenHutangPage() {
                   </Link>
                 </td>
               </tr>
-            ))}
+            ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="text-center p-8 text-gray-500">
+                    Tidak ada data hutang yang cocok dengan pencarian Anda.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
-        {filteredData.length === 0 && (
-            <div className="text-center p-8 text-gray-500">
-                Tidak ada data hutang yang cocok dengan pencarian Anda.
-            </div>
+        {totalPages > 1 && (
+          <div className="p-4 flex justify-start">
+            <PaginationControls />
+          </div>
         )}
       </div>
     </div>
