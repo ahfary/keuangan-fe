@@ -1,66 +1,114 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, CheckCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Search, Plus } from 'lucide-react';
+import Link from 'next/link';
 
-// Data tiruan untuk piutang
-const initialPiutangList = [
-  { id: 'PI001', name: 'Santri A', date: '2023-10-25', amount: 50000, status: 'Belum Lunas' },
-  { id: 'PI002', name: 'Santri B', date: '2023-10-24', amount: 25000, status: 'Belum Lunas' },
-  { id: 'PI003', name: 'Pengurus C', date: '2023-10-22', amount: 75000, status: 'Lunas' },
+// --- Tipe Data untuk Santri yang Berhutang ---
+interface SantriHutang {
+  id: string;
+  nama: string;
+  kelas: string;
+  jurusan: 'RPL' | 'TKJ';
+  hutang: number;
+}
+
+// --- Data Tiruan (Mock Data) ---
+const mockHutangData: SantriHutang[] = [
+  { id: '1', nama: 'Ahmad Yusuf', kelas: 'XII', jurusan: 'RPL', hutang: 125000 },
+  { id: '2', nama: 'Budi Santoso', kelas: 'XI', jurusan: 'TKJ', hutang: 220000 },
+  { id: '3', nama: 'Citra Lestari', kelas: 'XII', jurusan: 'RPL', hutang: 75000 },
+  { id: '4', nama: 'Dewi Anggraini', kelas: 'X', jurusan: 'RPL', hutang: 92000 },
+  { id: '5', nama: 'Eko Prasetyo', kelas: 'XI', jurusan: 'RPL', hutang: 460000 },
 ];
 
-export default function PiutangPage() {
-  const [piutangList, setPiutangList] = useState(initialPiutangList);
+export default function ManajemenHutangPage() {
+  const [dataHutang, setDataHutang] = useState<SantriHutang[]>(mockHutangData);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<'semua' | 'kelas' | 'jurusan'>('semua');
 
-  const handleMarkAsPaid = (id: string) => {
-    setPiutangList(piutangList.map(p => p.id === id ? { ...p, status: 'Lunas' } : p));
-  };
+  // Logika untuk memfilter data berdasarkan pencarian dan filter
+  const filteredData = useMemo(() => {
+    return dataHutang.filter(santri =>
+      santri.nama.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [dataHutang, searchTerm]);
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Manajemen Piutang</h1>
-        <Button>
-          <PlusCircle className="w-5 h-5 mr-2" />
-          Tambah Piutang
-        </Button>
+    <div className="space-y-6">
+      {/* --- Header Halaman --- */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Manajemen Hutang Santri</h1>
+          <p className="mt-1 text-gray-600 dark:text-gray-400">Cek, filter, dan kelola data hutang santri.</p>
+        </div>
+        <div className="flex gap-2">
+           <Button variant="outline">Filter Opsi</Button>
+           <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Tambah Santri Hutang
+           </Button>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+      {/* --- Panel Pencarian dan Filter --- */}
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Input
+            placeholder="Cari nama santri..."
+            className="pl-10"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Filter:</span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant={filter === 'semua' ? 'default' : 'outline'} onClick={() => setFilter('semua')}>Semua</Button>
+            <Button size="sm" variant={filter === 'kelas' ? 'default' : 'outline'} onClick={() => setFilter('kelas')}>Kelas</Button>
+            <Button size="sm" variant={filter === 'jurusan' ? 'default' : 'outline'} onClick={() => setFilter('jurusan')}>Jurusan</Button>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Tabel Data Hutang --- */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th scope="col" className="px-6 py-3">Nama</th>
-              <th scope="col" className="px-6 py-3">Tanggal</th>
-              <th scope="col" className="px-6 py-3">Jumlah</th>
-              <th scope="col" className="px-6 py-3">Status</th>
-              <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+              <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Nama</th>
+              <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Kelas</th>
+              <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Jurusan</th>
+              <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Hutang</th>
+              <th className="p-4 font-semibold text-center text-gray-600 dark:text-gray-300">Aksi</th>
             </tr>
           </thead>
-          <tbody>
-            {piutangList.map((piutang) => (
-              <tr key={piutang.id} className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
-                <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{piutang.name}</td>
-                <td className="px-6 py-4">{piutang.date}</td>
-                <td className="px-6 py-4">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(piutang.amount)}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${piutang.status === 'Lunas' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                    {piutang.status}
-                  </span>
+          <tbody className="divide-y dark:divide-gray-700">
+            {filteredData.map(santri => (
+              <tr key={santri.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td className="p-4 capitalize text-gray-900 dark:text-white">{santri.nama}</td>
+                <td className="p-4 text-gray-600 dark:text-gray-300">{santri.kelas}</td>
+                <td className="p-4 text-gray-600 dark:text-gray-300">{santri.jurusan}</td>
+                <td className="p-4 font-mono text-red-500 dark:text-red-400">
+                  - {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(santri.hutang)}
                 </td>
-                <td className="px-6 py-4 text-center">
-                  {piutang.status === 'Belum Lunas' && (
-                    <Button variant="ghost" size="sm" onClick={() => handleMarkAsPaid(piutang.id)}>
-                      <CheckCircle className="w-4 h-4 mr-1" /> Tandai Lunas
-                    </Button>
-                  )}
+                <td className="p-4 text-center">
+                  <Link href={`/dashboard/admin/santri/${santri.id}`}>
+                    <Button variant="outline" size="sm">Detail</Button>
+                  </Link>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {filteredData.length === 0 && (
+            <div className="text-center p-8 text-gray-500">
+                Tidak ada data hutang yang cocok dengan pencarian Anda.
+            </div>
+        )}
       </div>
     </div>
   );

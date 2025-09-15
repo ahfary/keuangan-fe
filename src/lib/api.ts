@@ -57,13 +57,9 @@ export const loginUser = async (email : any, password : any, role : any) => {
 //         FUNGSI DASHBOARD
 // =========================================
 
-export const getDashboardStats = () => {
-  return fetchAPI('/santri/stats');
-};
-
-export const getTopSantriBySaldo = (limit = 5) => {
-  return fetchAPI(`/santri/top-saldo?limit=${limit}`);
-};
+export const getJumlahSantri = () => {
+  return fetchAPI('/santri');
+}
 
 
 // =========================================
