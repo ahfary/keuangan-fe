@@ -1,16 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Wallet,
   Clock,
-  ArrowUpRight,
-  ArrowDownRight,
   ChevronDown,
+  LoaderCircle,
+  Trophy,
 } from "lucide-react";
-
 import {
   ResponsiveContainer,
   AreaChart,
@@ -20,86 +18,68 @@ import {
   Area,
   CartesianGrid,
 } from "recharts";
+import { getTotalSantri, getTotalSaldo, getTotalHutang, getTopBalanceSantri } from "@/lib/api";
+import toast from "react-hot-toast";
 
-// --- Data Tiruan (Mock Data) ---
+// --- Tipe Data ---
+interface Stats {
+  totalSantri: number;
+  totalSaldo: number;
+  totalHutang: number;
+}
+interface TopSantri {
+  id: string;
+  name: string;
+  kelas: string;
+  jurusan: string;
+  saldo: number;
+}
 
-const stats = {
-  totalSantri: 152,
-  totalSaldo: 125500000,
-  pendingTopUp: 250000,
-};
-
-const recentActivities = [
-  {
-    type: "top-up",
-    name: "Ahmad Yusuf",
-    amount: 200000,
-    time: "2 menit yang lalu",
-  },
-  {
-    type: "transaction",
-    name: "Kantin Blok A",
-    amount: 15000,
-    time: "10 menit yang lalu",
-  },
-  {
-    type: "top-up",
-    name: "Citra Lestari",
-    amount: 300000,
-    time: "1 jam yang lalu",
-  },
-  {
-    type: "transaction",
-    name: "Koperasi Pondok",
-    amount: 50000,
-    time: "3 jam yang lalu",
-  },
-];
 
 // Data tiruan untuk grafik
 const chartData = {
-  "7hari": [
-    { name: "Senin", Pemasukan: 400000, Pengeluaran: 240000 },
-    { name: "Selasa", Pemasukan: 300000, Pengeluaran: 139800 },
-    { name: "Rabu", Pemasukan: 200000, Pengeluaran: 980000 },
-    { name: "Kamis", Pemasukan: 278000, Pengeluaran: 390800 },
-    { name: "Jumat", Pemasukan: 189000, Pengeluaran: 480000 },
-    { name: "Sabtu", Pemasukan: 239000, Pengeluaran: 380000 },
-    { name: "Minggu", Pemasukan: 349000, Pengeluaran: 430000 },
-  ],
-  "1bulan": [
-    { name: "Minggu 1", Pemasukan: 1200000, Pengeluaran: 800000 },
-    { name: "Minggu 2", Pemasukan: 1500000, Pengeluaran: 1000000 },
-    { name: "Minggu 3", Pemasukan: 1700000, Pengeluaran: 1100000 },
-    { name: "Minggu 4", Pemasukan: 1600000, Pengeluaran: 1200000 },
-  ],
-  "3bulan": [
-    { name: "Januari", Pemasukan: 4000000, Pengeluaran: 2500000 },
-    { name: "Februari", Pemasukan: 4200000, Pengeluaran: 3000000 },
-    { name: "Maret", Pemasukan: 4500000, Pengeluaran: 3200000 },
-  ],
-  "6bulan": [
-    { name: "Jan", Pemasukan: 4000000, Pengeluaran: 2500000 },
-    { name: "Feb", Pemasukan: 4200000, Pengeluaran: 3000000 },
-    { name: "Mar", Pemasukan: 4500000, Pengeluaran: 3200000 },
-    { name: "Apr", Pemasukan: 4700000, Pengeluaran: 3500000 },
-    { name: "Mei", Pemasukan: 5000000, Pengeluaran: 3700000 },
-    { name: "Jun", Pemasukan: 5300000, Pengeluaran: 4000000 },
-  ],
-  "12bulan": [
-    { name: "Jan", Pemasukan: 4000000, Pengeluaran: 2500000 },
-    { name: "Feb", Pemasukan: 4200000, Pengeluaran: 3000000 },
-    { name: "Mar", Pemasukan: 4500000, Pengeluaran: 3200000 },
-    { name: "Apr", Pemasukan: 4700000, Pengeluaran: 3500000 },
-    { name: "Mei", Pemasukan: 5000000, Pengeluaran: 3700000 },
-    { name: "Jun", Pemasukan: 5300000, Pengeluaran: 4000000 },
-    { name: "Jul", Pemasukan: 5500000, Pengeluaran: 4200000 },
-    { name: "Agu", Pemasukan: 5700000, Pengeluaran: 4400000 },
-    { name: "Sep", Pemasukan: 5900000, Pengeluaran: 4600000 },
-    { name: "Okt", Pemasukan: 6000000, Pengeluaran: 4700000 },
-    { name: "Nov", Pemasukan: 6200000, Pengeluaran: 4800000 },
-    { name: "Des", Pemasukan: 6500000, Pengeluaran: 5000000 },
-  ],
+    "7hari": [
+        { name: "Senin", Pemasukan: 400000, Pengeluaran: 240000 },
+        { name: "Selasa", Pemasukan: 300000, Pengeluaran: 139800 },
+        { name: "Rabu", Pemasukan: 200000, Pengeluaran: 980000 },
+        { name: "Kamis", Pemasukan: 278000, Pengeluaran: 390800 },
+        { name: "Jumat", Pemasukan: 189000, Pengeluaran: 480000 },
+        { name: "Sabtu", Pemasukan: 239000, Pengeluaran: 380000 },
+        { name: "Minggu", Pemasukan: 349000, Pengeluaran: 430000 },
+    ],
+    "1bulan": [
+      { name: "Minggu 1", Pemasukan: 1200000, Pengeluaran: 800000 },
+      { name: "Minggu 2", Pemasukan: 1500000, Pengeluaran: 1000000 },
+      { name: "Minggu 3", Pemasukan: 1700000, Pengeluaran: 1100000 },
+      { name: "Minggu 4", Pemasukan: 1600000, Pengeluaran: 1200000 },
+    ],
+    "3bulan": [
+      { name: "Januari", Pemasukan: 4000000, Pengeluaran: 2500000 },
+      { name: "Februari", Pemasukan: 4200000, Pengeluaran: 3000000 },
+      { name: "Maret", Pemasukan: 4500000, Pengeluaran: 3200000 },
+    ],
+    "6bulan": [
+      { name: "Jan", Pemasukan: 4000000, Pengeluaran: 2500000 },
+      { name: "Feb", Pemasukan: 4200000, Pengeluaran: 3000000 },
+      { name: "Mar", Pemasukan: 4500000, Pengeluaran: 3200000 },
+      { name: "Apr", Pemasukan: 4700000, Pengeluaran: 3500000 },
+      { name: "Mei", Pemasukan: 5000000, Pengeluaran: 3700000 },
+      { name: "Jun", Pemasukan: 5300000, Pengeluaran: 4000000 },
+    ],
+    "12bulan": [
+      { name: "Jan", Pemasukan: 4000000, Pengeluaran: 2500000 },
+      { name: "Feb", Pemasukan: 4200000, Pengeluaran: 3000000 },
+      { name: "Mar", Pemasukan: 4500000, Pengeluaran: 3200000 },
+      { name: "Apr", Pemasukan: 4700000, Pengeluaran: 3500000 },
+      { name: "Mei", Pemasukan: 5000000, Pengeluaran: 3700000 },
+      { name: "Jun", Pemasukan: 5300000, Pengeluaran: 4000000 },
+      { name: "Jul", Pemasukan: 5500000, Pengeluaran: 4200000 },
+      { name: "Agu", Pemasukan: 5700000, Pengeluaran: 4400000 },
+      { name: "Sep", Pemasukan: 5900000, Pengeluaran: 4600000 },
+      { name: "Okt", Pemasukan: 6000000, Pengeluaran: 4700000 },
+      { name: "Nov", Pemasukan: 6200000, Pengeluaran: 4800000 },
+      { name: "Des", Pemasukan: 6500000, Pengeluaran: 5000000 },
+    ],
 };
 
 // --- Komponen Kartu Statistik ---
@@ -107,10 +87,12 @@ function StatCard({
   title,
   value,
   icon,
+  isLoading,
 }: {
   title: string;
   value: string;
   icon: React.ReactNode;
+  isLoading?: boolean;
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center">
@@ -121,9 +103,13 @@ function StatCard({
         <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {title}
         </p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-white">
-          {value}
-        </p>
+        {isLoading ? (
+          <LoaderCircle className="w-6 h-6 animate-spin mt-1" />
+        ) : (
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">
+            {value}
+          </p>
+        )}
       </div>
     </div>
   );
@@ -201,6 +187,40 @@ function TransactionChart({ data }: { data: any[] }) {
 // --- Komponen Utama ---
 export default function DashboardPage() {
   const [range, setRange] = useState<keyof typeof chartData>("7hari");
+  const [stats, setStats] = useState<Stats>({ totalSantri: 0, totalSaldo: 0, totalHutang: 0 });
+  const [topSantri, setTopSantri] = useState<TopSantri[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        const [santriData, saldoData, hutangData, topSantriData] = await Promise.all([
+          getTotalSantri(),
+          getTotalSaldo(),
+          getTotalHutang(),
+          getTopBalanceSantri(),
+        ]);
+        setStats({
+          totalSantri: santriData || 0,
+          totalSaldo: saldoData || 0,
+          totalHutang: hutangData || 0,
+        });
+        setTopSantri(topSantriData || []);
+      } catch (error) {
+        toast.error("Gagal memuat data dashboard.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  const trophyDetails = [
+    { iconColor: "text-yellow-400", bgColor: "bg-yellow-400/20" },
+    { iconColor: "text-gray-400", bgColor: "bg-gray-400/20" },
+    { iconColor: "text-yellow-600", bgColor: "bg-yellow-600/20" },
+  ];
 
   return (
     <div className="space-y-8">
@@ -219,6 +239,7 @@ export default function DashboardPage() {
           title="Total Santri"
           value={stats.totalSantri.toString()}
           icon={<Users className="w-8 h-8 text-blue-500" />}
+          isLoading={isLoading}
         />
         <StatCard
           title="Total Saldo Terkelola"
@@ -227,15 +248,20 @@ export default function DashboardPage() {
             currency: "IDR",
           }).format(stats.totalSaldo)}
           icon={<Wallet className="w-8 h-8 text-green-500" />}
+          isLoading={isLoading}
         />
         <StatCard
           title="Total Hutang Santri"
-          value={stats.pendingTopUp.toString()}
+          value={new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+          }).format(stats.totalHutang)}
           icon={<Clock className="w-8 h-8 text-yellow-500" />}
+          isLoading={isLoading}
         />
       </div>
 
-      {/* Grafik + Aktivitas */}
+      {/* Grafik + Saldo Terbanyak */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Grafik */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
@@ -265,50 +291,42 @@ export default function DashboardPage() {
           <TransactionChart data={chartData[range]} />
         </div>
 
-        {/* Aktivitas Terbaru */}
+        {/* Saldo Terbanyak */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">
-            Aktivitas Terbaru
+            Saldo Terbanyak
           </h2>
           <ul className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <li key={index} className="flex items-center">
-                <div
-                  className={`p-2 rounded-full ${
-                    activity.type === "top-up"
-                      ? "bg-green-100 dark:bg-green-900"
-                      : "bg-red-100 dark:bg-red-900"
-                  }`}
-                >
-                  {activity.type === "top-up" ? (
-                    <ArrowUpRight className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <ArrowDownRight className="w-5 h-5 text-red-500" />
-                  )}
-                </div>
-                <div className="ml-3 flex-grow">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {activity.name}
+            {isLoading ? (
+              <p className="text-center text-gray-500">Memuat data...</p>
+            ) : (
+              topSantri.slice(0, 7).map((santri, index) => (
+                <li key={santri.id} className="flex items-center">
+                  <div className={`p-2 rounded-full w-10 h-10 flex items-center justify-center ${index < 3 ? trophyDetails[index].bgColor : 'bg-gray-100 dark:bg-gray-700'}`}>
+                    {index < 3 ? (
+                      <Trophy className={`w-6 h-6 ${trophyDetails[index].iconColor}`} />
+                    ) : (
+                      <span className="font-bold text-gray-600 dark:text-gray-300">{index + 1}</span>
+                    )}
+                  </div>
+                  <div className="ml-3 flex-grow">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {santri.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {santri.kelas} {santri.jurusan}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-green-600">
+                    {new Intl.NumberFormat("id-ID", {
+                      style: "currency",
+                      currency: "IDR",
+                      minimumFractionDigits: 0
+                    }).format(santri.saldo)}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {activity.time}
-                  </p>
-                </div>
-                <p
-                  className={`text-sm font-semibold ${
-                    activity.type === "top-up"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {activity.type === "top-up" ? "+" : "-"}
-                  {new Intl.NumberFormat("id-ID", {
-                    style: "currency",
-                    currency: "IDR",
-                  }).format(activity.amount)}
-                </p>
-              </li>
-            ))}
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </div>

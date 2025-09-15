@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       {/* 3. Terapkan font ke tag <body>
         Kita menggunakan `poppins.variable` untuk membuat CSS variable
         dan `font-sans` agar menjadi font default yang digunakan oleh Tailwind.

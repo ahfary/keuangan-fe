@@ -61,6 +61,22 @@ export const getJumlahSantri = () => {
   return fetchAPI('/santri');
 }
 
+export const getTotalSantri = () => {
+  return fetchAPI('/santri/count');
+}
+
+export const getTotalSaldo = () => {
+  return fetchAPI('/santri/total-saldo');
+}
+
+export const getTotalHutang = () => {
+  return fetchAPI('/santri/hutang');
+}
+
+export const getTopBalanceSantri = () => {
+  return fetchAPI('/santri/saldo-max');
+};
+
 
 // =========================================
 //           FUNGSI SANTRI
@@ -148,31 +164,6 @@ export const deleteItem = (id: number) => {
   });
 };
 
-
-// DASHBOARD
-
-export const getTotalSantri = () => {
-  return fetchAPI('/santri/count');
-}
-
-export const getTotalSaldo = () => {
-  return fetchAPI('/santri/total-saldo');
-}
-
-export const getTotalHutang = () => {
-  return fetchAPI('/santri/hutang');
-}
-
-
-
-
-
-
-
-
-
-
-
 export const createTopUpRequest = async (data: { santriId: string; amount: number; proof: File; }) => {
     // Karena kita mengirim file, kita gunakan FormData
     const formData = new FormData();
@@ -210,4 +201,4 @@ export const createAccount = (data: { name: string; email: string; password: str
     method: 'POST',
     body: JSON.stringify(data),
   });
-}
+};

@@ -1,19 +1,23 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import NotificationDropdown from "./NotificationDropdown";
 import Cookies from "js-cookie";
 
 export default function Navbar() {
+  const [user, setUser] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    // Ambil data cookie hanya setelah komponen ter-mount di client
+    const userNameFromCookie = Cookies.get("name");
+    setUser(userNameFromCookie);
+  }, []);
+
   const handleLogout = () => {
     Cookies.remove("accessToken");
     window.location.href = "/login";
   };
-
-  const user = Cookies.get("name");
-
-
 
   return (
     <header className="h-16 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-6">
@@ -34,10 +38,10 @@ export default function Navbar() {
         {/* Profile */}
         <div className="flex items-center">
           <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
-            A
+            {user ? user.charAt(0).toUpperCase() : 'A'}
           </div>
           <div className="ml-3">
-            <p className="text-sm font-semibold text-white">{user}</p>
+            <p className="text-sm font-semibold text-white">{user || 'Loading...'}</p>
             <p className="text-xs text-gray-400">Admin Pondok</p>
           </div>
         </div>
