@@ -508,7 +508,7 @@ export default function SantriPage() {
           setIsModalOpen(false);
           setEditingSantri(null);
         }}
-        onSave={(data: SantriFormData) =>
+        onSave={(data) =>
           editingSantri ? handleUpdateSantri(data) : handleCreateSantri(data)
         }
         initialData={editingSantri || undefined}

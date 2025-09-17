@@ -149,6 +149,8 @@ interface ItemData {
   gambar?: string;
 }
 
+
+
 export const getItems = () => fetchAPI('/items');
 
 export const createItem = (itemData: ItemData) => {
@@ -207,3 +209,18 @@ export const generateWalsan = (santriId: number) => {
     method: "POST",
   });
 };
+
+
+
+
+export const getHistoryBySantriId = (
+  santriId: string,
+  status?: "Lunas" | "Hutang"
+) => {
+  let endpoint = `/history/santri/${santriId}?sort=desc`;
+  if (status) {
+    endpoint += `&status=${status}`;
+  }
+  return fetchAPI(endpoint);
+};
+
