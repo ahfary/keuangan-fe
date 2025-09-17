@@ -49,8 +49,8 @@ const chartData = {
     ],
     "1bulan": [
       { name: "Minggu 1", Pemasukan: 1200000, Pengeluaran: 800000 },
-      { name: "Minggu 2", Pemasukan: 1500000, Pengeluaran: 1000000 },
-      { name: "Minggu 3", Pemasukan: 1700000, Pengeluaran: 1100000 },
+      { name: "Minggu 2", Pemasukan: 1300000, Pengeluaran: 1500000 },
+      { name: "Minggu 3", Pemasukan: 1200000, Pengeluaran: 1100000 },
       { name: "Minggu 4", Pemasukan: 1600000, Pengeluaran: 1200000 },
     ],
     "3bulan": [
