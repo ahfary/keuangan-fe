@@ -1,5 +1,3 @@
-// File: src/app/dashboard/kantin/stock/page.tsx
-
 "use client";
 
 import React, { useState, useEffect, FormEvent } from 'react';
@@ -12,13 +10,18 @@ import { getItems, createItem, updateItem, deleteItem } from '@/lib/api';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
-// --- Tipe Data ---
+// --- Tipe Data Disesuaikan dengan Respons API ---
+interface Kategori {
+  id: number;
+  nama: string;
+}
+
 interface Item {
   id: number;
   nama: string;
   harga: number;
   jumlah: number;
-  kategori: string;
+  kategori: Kategori | null; // FIX: Memungkinkan kategori bernilai null
   gambar?: string | null;
 }
 
@@ -58,7 +61,8 @@ const TableView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: 
                             />
                             {item.nama}
                         </td>
-                        <td className="px-6 py-4">{item.kategori}</td>
+                        {/* FIX: Tambahkan pengecekan null untuk kategori */}
+                        <td className="px-6 py-4">{item.kategori?.nama || 'Tanpa Kategori'}</td> 
                         <td className="px-6 py-4">{item.jumlah}</td>
                         <td className="px-6 py-4">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga)}</td>
                         <td className="px-6 py-4 flex justify-center space-x-2">
@@ -92,7 +96,8 @@ const GridView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: I
                 </div>
                 <div className="p-4 flex-grow flex flex-col justify-between">
                     <div>
-                        <p className="text-xs text-indigo-500 font-semibold">{item.kategori}</p>
+                        {/* FIX: Tambahkan pengecekan null untuk kategori */}
+                        <p className="text-xs text-indigo-500 font-semibold">{item.kategori?.nama || 'Tanpa Kategori'}</p> 
                         <h3 className="font-bold text-lg mt-1">{item.nama}</h3>
                     </div>
                     <div className="mt-4 flex justify-between items-center">
@@ -154,13 +159,12 @@ export default function StokPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemFormData | null>(null);
-  const [view, setView] = useState<'grid' | 'table'>('grid'); // State untuk mengontrol tampilan
+  const [view, setView] = useState<'grid' | 'table'>('grid');
 
   const fetchItems = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('accessToken') || '';
-      const data = await getItems(token);
+      const data = await getItems();
       setItems(Array.isArray(data) ? data : []);
     } catch (error: any) {
       toast.error(`Gagal memuat data: ${error.message}`);
@@ -176,7 +180,12 @@ export default function StokPage() {
 
   const handleOpenModal = (item: Item | null = null) => {
     if (item) {
-        setEditingItem({ ...item, harga: String(item.harga), jumlah: String(item.jumlah) });
+        setEditingItem({ 
+            ...item, 
+            harga: String(item.harga), 
+            jumlah: String(item.jumlah),
+            kategori: item.kategori?.nama || '', // FIX: Menggunakan nama kategori dan handle jika null
+        });
     } else {
         setEditingItem(null);
     }
@@ -184,7 +193,6 @@ export default function StokPage() {
   };
 
   const handleSaveItem = async (formData: ItemFormData) => {
-    const token = localStorage.getItem('accessToken') || '';
     const itemPayload = {
         nama: formData.nama,
         kategori: formData.kategori,
@@ -193,9 +201,9 @@ export default function StokPage() {
     };
     let promise;
     if (formData.id) {
-        promise = updateItem(formData.id, itemPayload, token);
+        promise = updateItem(formData.id, itemPayload);
     } else {
-        promise = createItem(itemPayload, token);
+        promise = createItem(itemPayload);
     }
     toast.promise(promise, {
         loading: 'Menyimpan data barang...',
@@ -210,8 +218,7 @@ export default function StokPage() {
 
   const handleDeleteItem = (item: Item) => {
     if (!confirm(`Apakah Anda yakin ingin menghapus "${item.nama}"?`)) return;
-    const token = localStorage.getItem('accessToken') || '';
-    const promise = deleteItem(item.id, token);
+    const promise = deleteItem(item.id);
     toast.promise(promise, {
         loading: 'Menghapus barang...',
         success: () => {
@@ -227,7 +234,6 @@ export default function StokPage() {
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold">Manajemen Stok Barang</h1>
         <div className="flex items-center gap-2">
-            {/* Tombol Tab */}
             <div className="p-1 bg-gray-200 dark:bg-gray-700 rounded-lg flex">
                 <button onClick={() => setView('grid')} className={cn("p-2 rounded-md", view === 'grid' && "bg-white dark:bg-gray-900 shadow")}>
                     <LayoutGrid className="w-5 h-5" />
