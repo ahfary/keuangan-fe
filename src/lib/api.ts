@@ -231,3 +231,7 @@ export const deleteSantriBulk = (ids: number[]) => {
     method: 'DELETE',
   });
 };
+
+export const getNotifications = () => {
+  return fetchAPI('/notifications'); // Asumsi endpoint ini ada
+};

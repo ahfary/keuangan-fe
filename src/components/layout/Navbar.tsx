@@ -7,27 +7,29 @@ import Cookies from "js-cookie";
 
 export default function Navbar() {
   const [user, setUser] = useState<string | undefined>(undefined);
+  const [userRole, setUserRole] = useState<string | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isClient, setIsClient] = useState(false); // State untuk melacak sisi klien
 
   useEffect(() => {
-    // Ambil data cookie hanya setelah komponen ter-mount di client
-    const userNameFromCookie = Cookies.get("name");
-    setUser(userNameFromCookie);
+    // Kode ini hanya akan berjalan di sisi klien
+    setIsClient(true); 
+    setUser(Cookies.get("name"));
+    const role = Cookies.get("userRole");
+    setUserRole(role ? role.charAt(0).toUpperCase() + role.slice(1) : "User");
   }, []);
 
-  const handleLogout = () => {
-    Cookies.remove("accessToken");
-    window.location.href = "/login";
-  };
-
   return (
-    <header className="h-16 bg-gray-900 border-b border-gray-700 flex items-center justify-between px-6">
+    <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-6">
       {/* Search */}
       <div className="flex items-center">
         <Search className="w-5 h-5 text-gray-400" />
         <input
           type="text"
           placeholder="Cari santri atau transaksi..."
-          className="ml-2 bg-transparent focus:outline-none text-gray-200 placeholder-gray-400"
+          className="ml-2 bg-transparent focus:outline-none text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
 
@@ -37,13 +39,20 @@ export default function Navbar() {
 
         {/* Profile */}
         <div className="flex items-center">
-          <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
-            {user ? user.charAt(0).toUpperCase() : 'A'}
-          </div>
-          <div className="ml-3">
-            <p className="text-sm font-semibold text-white">{user || 'Loading...'}</p>
-            <p className="text-xs text-gray-400">Admin Pondok</p>
-          </div>
+          {isClient ? ( // Hanya render bagian ini jika sudah di sisi klien
+            <>
+              <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold">
+                {user ? user.charAt(0).toUpperCase() : 'A'}
+              </div>
+              <div className="ml-3">
+                <p className="text-sm font-semibold text-gray-800 dark:text-white">{user || '...'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{userRole || '...'}</p>
+              </div>
+            </>
+          ) : (
+            // Placeholder saat render di server
+            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse"></div>
+          )}
         </div>
       </div>
     </header>
