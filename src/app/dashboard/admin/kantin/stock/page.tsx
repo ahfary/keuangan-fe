@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, FormEvent } from 'react';
+import React, { useState, useEffect, FormEvent, useMemo } from 'react';
 import Image from 'next/image';
-import { PlusCircle, FilePenLine, Trash2, X, LoaderCircle, LayoutGrid, List } from 'lucide-react';
+import { PlusCircle, FilePenLine, Trash2, X, LoaderCircle, LayoutGrid, List, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +21,7 @@ interface Item {
   nama: string;
   harga: number;
   jumlah: number;
-  kategori: Kategori | null; // FIX: Memungkinkan kategori bernilai null
+  kategori: Kategori | null;
   gambar?: string | null;
 }
 
@@ -33,25 +33,27 @@ interface ItemFormData {
   kategori: string;
 }
 
+const ITEMS_PER_PAGE = 8;
+
 // --- Komponen-Komponen Tampilan ---
 
-// Tampilan Tabel
 const TableView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: Item) => void, onDelete: (item: Item) => void }) => (
-    <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 dark:bg-gray-700 text-xs uppercase">
+    // FIX: Container dan styling disamakan dengan halaman Piutang
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
+        <table className="w-full text-left">
+            <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                    <th className="px-6 py-3">Nama Barang</th>
-                    <th className="px-6 py-3">Kategori</th>
-                    <th className="px-6 py-3">Jumlah (Stok)</th>
-                    <th className="px-6 py-3">Harga Jual</th>
-                    <th className="px-6 py-3 text-center">Aksi</th>
+                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Nama Barang</th>
+                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Kategori</th>
+                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Jumlah (Stok)</th>
+                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Harga Jual</th>
+                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody className="divide-y dark:divide-gray-700">
                 {items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-600/50">
-                        <td className="px-6 py-4 font-medium flex items-center">
+                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="p-4 flex items-center text-gray-900 dark:text-white">
                             <Image 
                                 src={item.gambar || `https://placehold.co/40x40/E0E7FF/4338CA?text=${item.nama.charAt(0)}`} 
                                 alt={item.nama}
@@ -61,11 +63,10 @@ const TableView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: 
                             />
                             {item.nama}
                         </td>
-                        {/* FIX: Tambahkan pengecekan null untuk kategori */}
-                        <td className="px-6 py-4">{item.kategori?.nama || 'Tanpa Kategori'}</td> 
-                        <td className="px-6 py-4">{item.jumlah}</td>
-                        <td className="px-6 py-4">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga)}</td>
-                        <td className="px-6 py-4 flex justify-center space-x-2">
+                        <td className="p-4 text-gray-600 dark:text-gray-300">{item.kategori?.nama || 'Tanpa Kategori'}</td> 
+                        <td className="p-4 text-gray-600 dark:text-gray-300">{item.jumlah}</td>
+                        <td className="p-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga)}</td>
+                        <td className="p-4 flex justify-center space-x-2">
                             <Button variant="ghost" size="icon" onClick={() => onEdit(item)}><FilePenLine className="w-5 h-5 text-blue-600" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => onDelete(item)}><Trash2 className="w-5 h-5 text-red-600" /></Button>
                         </td>
@@ -76,7 +77,6 @@ const TableView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: 
     </div>
 );
 
-// Tampilan Grid
 const GridView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: Item) => void, onDelete: (item: Item) => void }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {items.map(item => (
@@ -96,7 +96,6 @@ const GridView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: I
                 </div>
                 <div className="p-4 flex-grow flex flex-col justify-between">
                     <div>
-                        {/* FIX: Tambahkan pengecekan null untuk kategori */}
                         <p className="text-xs text-indigo-500 font-semibold">{item.kategori?.nama || 'Tanpa Kategori'}</p> 
                         <h3 className="font-bold text-lg mt-1">{item.nama}</h3>
                     </div>
@@ -110,7 +109,6 @@ const GridView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: I
     </div>
 );
 
-// --- Komponen Modal ---
 const ItemFormModal = ({ isOpen, onClose, onSave, itemData }: { isOpen: boolean; onClose: () => void; onSave: (data: ItemFormData) => void; itemData: ItemFormData | null; }) => {
     const [formData, setFormData] = useState<ItemFormData>({ nama: '', harga: '', jumlah: '', kategori: '' });
     const modalTitle = itemData ? 'Edit Data Barang' : 'Tambah Barang Baru';
@@ -160,6 +158,10 @@ export default function StokPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemFormData | null>(null);
   const [view, setView] = useState<'grid' | 'table'>('grid');
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const fetchItems = async () => {
     setIsLoading(true);
@@ -177,6 +179,71 @@ export default function StokPage() {
   useEffect(() => {
     fetchItems();
   }, []);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedCategory]);
+
+  const uniqueCategories = useMemo(() => {
+    const categories = new Set<string>();
+    items.forEach(item => {
+      if (item.kategori?.nama) {
+        categories.add(item.kategori.nama);
+      }
+    });
+    return Array.from(categories).sort();
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+        const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory ? item.kategori?.nama === selectedCategory : true;
+        return matchesSearch && matchesCategory;
+    });
+  }, [items, searchTerm, selectedCategory]);
+
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredItems, currentPage]);
+
+  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
+  
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // FIX: Komponen Paginasi terpisah untuk Tabel
+  const PaginationControlsForTable = () => (
+    <div className="flex justify-center items-center gap-2 p-4">
+      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+        <ChevronLeft className="w-4 h-4" />
+      </Button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        <Button key={page} size="sm" variant={currentPage === page ? "default" : "outline"} onClick={() => handlePageChange(page)}>
+          {page}
+        </Button>
+      ))}
+      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+
+  // FIX: Komponen Paginasi terpisah untuk Grid
+  const PaginationControlsForGrid = () => (
+    <div className="flex justify-center items-center gap-2 mt-6">
+      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+        <ChevronLeft className="w-4 h-4" />
+      </Button>
+      <span className="text-sm">Halaman {currentPage} dari {totalPages}</span>
+      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+        <ChevronRight className="w-4 h-4" />
+      </Button>
+    </div>
+  );
 
   const handleOpenModal = (item: Item | null = null) => {
     if (item) {
@@ -184,7 +251,7 @@ export default function StokPage() {
             ...item, 
             harga: String(item.harga), 
             jumlah: String(item.jumlah),
-            kategori: item.kategori?.nama || '', // FIX: Menggunakan nama kategori dan handle jika null
+            kategori: item.kategori?.nama || '',
         });
     } else {
         setEditingItem(null);
@@ -230,32 +297,48 @@ export default function StokPage() {
   };
 
   return (
-    <div>
-      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6">
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <h1 className="text-3xl font-bold">Manajemen Stok Barang</h1>
         <div className="flex items-center gap-2">
             <div className="p-1 bg-gray-200 dark:bg-gray-700 rounded-lg flex">
-                <button onClick={() => setView('grid')} className={cn("p-2 rounded-md", view === 'grid' && "bg-white dark:bg-gray-900 shadow")}>
-                    <LayoutGrid className="w-5 h-5" />
-                </button>
-                <button onClick={() => setView('table')} className={cn("p-2 rounded-md", view === 'table' && "bg-white dark:bg-gray-900 shadow")}>
-                    <List className="w-5 h-5" />
-                </button>
+                <button onClick={() => setView('grid')} className={cn("p-2 rounded-md", view === 'grid' && "bg-white dark:bg-gray-900 shadow")}><LayoutGrid className="w-5 h-5" /></button>
+                <button onClick={() => setView('table')} className={cn("p-2 rounded-md", view === 'table' && "bg-white dark:bg-gray-900 shadow")}><List className="w-5 h-5" /></button>
             </div>
-            <Button onClick={() => handleOpenModal()}>
-                <PlusCircle className="w-5 h-5 mr-2" />
-                Tambah Barang
-            </Button>
+            <Button onClick={() => handleOpenModal()}><PlusCircle className="w-5 h-5 mr-2" />Tambah Barang</Button>
         </div>
+      </div>
+      
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-grow">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input placeholder="Cari nama barang..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          </div>
+          <select
+              className="p-2 border rounded-md bg-white dark:bg-gray-700 text-sm w-full sm:w-auto"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+              <option value="">Semua Kategori</option>
+              {uniqueCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
       </div>
 
       <div>
         {isLoading ? (
           <div className="flex justify-center items-center h-64"><LoaderCircle className="w-8 h-8 animate-spin" /></div>
+        ) : paginatedItems.length > 0 ? (
+            <>
+                {view === 'grid' 
+                    ? <GridView items={paginatedItems} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
+                    : <TableView items={paginatedItems} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
+                }
+                {totalPages > 1 && (view === 'grid' ? <PaginationControlsForGrid /> : <PaginationControlsForTable />)}
+            </>
         ) : (
-            view === 'grid' 
-                ? <GridView items={items} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
-                : <TableView items={items} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
+            <div className="text-center py-16 text-gray-500">
+                <p>Tidak ada barang yang cocok dengan filter Anda.</p>
+            </div>
         )}
       </div>
       
