@@ -33,48 +33,45 @@ interface ItemFormData {
   kategori: string;
 }
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 8; // Disesuaikan untuk tampilan grid (4x2) dan tabel
 
 // --- Komponen-Komponen Tampilan ---
 
 const TableView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: Item) => void, onDelete: (item: Item) => void }) => (
-    // FIX: Container dan styling disamakan dengan halaman Piutang
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
-        <table className="w-full text-left">
-            <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Nama Barang</th>
-                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Kategori</th>
-                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Jumlah (Stok)</th>
-                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Harga Jual</th>
-                    <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 text-center">Aksi</th>
+    <table className="w-full text-left">
+        <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Nama Barang</th>
+                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Kategori</th>
+                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Jumlah (Stok)</th>
+                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300">Harga Jual</th>
+                <th className="p-4 font-semibold text-gray-600 dark:text-gray-300 text-center">Aksi</th>
+            </tr>
+        </thead>
+        <tbody className="divide-y dark:divide-gray-700">
+            {items.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                    <td className="p-4 flex items-center text-gray-900 dark:text-white">
+                        <Image 
+                            src={item.gambar || `https://placehold.co/40x40/E0E7FF/4338CA?text=${item.nama.charAt(0)}`} 
+                            alt={item.nama}
+                            width={40} height={40}
+                            className="rounded-md mr-4 object-cover"
+                            onError={(e) => { e.currentTarget.src = `https://placehold.co/40x40/E0E7FF/4338CA?text=${item.nama.charAt(0)}`; }}
+                        />
+                        {item.nama}
+                    </td>
+                    <td className="p-4 text-gray-600 dark:text-gray-300">{item.kategori?.nama || 'Tanpa Kategori'}</td> 
+                    <td className="p-4 text-gray-600 dark:text-gray-300">{item.jumlah}</td>
+                    <td className="p-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga)}</td>
+                    <td className="p-4 flex justify-center space-x-2">
+                        <Button variant="ghost" size="icon" onClick={() => onEdit(item)}><FilePenLine className="w-5 h-5 text-blue-600" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => onDelete(item)}><Trash2 className="w-5 h-5 text-red-600" /></Button>
+                    </td>
                 </tr>
-            </thead>
-            <tbody className="divide-y dark:divide-gray-700">
-                {items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                        <td className="p-4 flex items-center text-gray-900 dark:text-white">
-                            <Image 
-                                src={item.gambar || `https://placehold.co/40x40/E0E7FF/4338CA?text=${item.nama.charAt(0)}`} 
-                                alt={item.nama}
-                                width={40} height={40}
-                                className="rounded-md mr-4 object-cover"
-                                onError={(e) => { e.currentTarget.src = `https://placehold.co/40x40/E0E7FF/4338CA?text=${item.nama.charAt(0)}`; }}
-                            />
-                            {item.nama}
-                        </td>
-                        <td className="p-4 text-gray-600 dark:text-gray-300">{item.kategori?.nama || 'Tanpa Kategori'}</td> 
-                        <td className="p-4 text-gray-600 dark:text-gray-300">{item.jumlah}</td>
-                        <td className="p-4 text-gray-600 dark:text-gray-300">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga)}</td>
-                        <td className="p-4 flex justify-center space-x-2">
-                            <Button variant="ghost" size="icon" onClick={() => onEdit(item)}><FilePenLine className="w-5 h-5 text-blue-600" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => onDelete(item)}><Trash2 className="w-5 h-5 text-red-600" /></Button>
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
+            ))}
+        </tbody>
+    </table>
 );
 
 const GridView = ({ items, onEdit, onDelete }: { items: Item[], onEdit: (item: Item) => void, onDelete: (item: Item) => void }) => (
@@ -215,35 +212,41 @@ export default function StokPage() {
     }
   };
 
-  // FIX: Komponen Paginasi terpisah untuk Tabel
-  const PaginationControlsForTable = () => (
-    <div className="flex justify-center items-center gap-2 p-4">
-      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-        <ChevronLeft className="w-4 h-4" />
-      </Button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-        <Button key={page} size="sm" variant={currentPage === page ? "default" : "outline"} onClick={() => handlePageChange(page)}>
-          {page}
-        </Button>
-      ))}
-      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-        <ChevronRight className="w-4 h-4" />
-      </Button>
-    </div>
-  );
+  const PaginationControls = ({ isTable = false }: { isTable?: boolean }) => {
+    if (totalPages <= 1) return null;
 
-  // FIX: Komponen Paginasi terpisah untuk Grid
-  const PaginationControlsForGrid = () => (
-    <div className="flex justify-center items-center gap-2 mt-6">
-      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-        <ChevronLeft className="w-4 h-4" />
-      </Button>
-      <span className="text-sm">Halaman {currentPage} dari {totalPages}</span>
-      <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-        <ChevronRight className="w-4 h-4" />
-      </Button>
-    </div>
-  );
+    if (isTable) {
+      return (
+        <div className="p-4 flex justify-center">
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button key={page} size="sm" variant={currentPage === page ? "default" : "outline"} onClick={() => handlePageChange(page)}>
+                {page}
+              </Button>
+            ))}
+            <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex justify-center items-center gap-2 mt-6">
+        <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-sm">Halaman {currentPage} dari {totalPages}</span>
+        <Button size="sm" variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+    );
+  };
 
   const handleOpenModal = (item: Item | null = null) => {
     if (item) {
@@ -328,13 +331,17 @@ export default function StokPage() {
         {isLoading ? (
           <div className="flex justify-center items-center h-64"><LoaderCircle className="w-8 h-8 animate-spin" /></div>
         ) : paginatedItems.length > 0 ? (
-            <>
-                {view === 'grid' 
-                    ? <GridView items={paginatedItems} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
-                    : <TableView items={paginatedItems} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
-                }
-                {totalPages > 1 && (view === 'grid' ? <PaginationControlsForGrid /> : <PaginationControlsForTable />)}
-            </>
+            view === 'grid' ? (
+              <>
+                <GridView items={paginatedItems} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
+                <PaginationControls />
+              </>
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-x-auto">
+                <TableView items={paginatedItems} onEdit={handleOpenModal} onDelete={handleDeleteItem} />
+                <PaginationControls isTable={true} />
+              </div>
+            )
         ) : (
             <div className="text-center py-16 text-gray-500">
                 <p>Tidak ada barang yang cocok dengan filter Anda.</p>

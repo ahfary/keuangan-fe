@@ -18,8 +18,14 @@ import {
   Area,
   CartesianGrid,
 } from "recharts";
-import { getTotalSantri, getTotalSaldo, getTotalHutang, getTopBalanceSantri } from "@/lib/api";
+import {
+  getTotalSantri,
+  getTotalSaldo,
+  getTotalHutang,
+  getTopBalanceSantri,
+} from "@/lib/api";
 import toast from "react-hot-toast";
+import Cookies from "js-cookie";
 
 // --- Tipe Data ---
 interface Stats {
@@ -34,7 +40,6 @@ interface TopSantri {
   jurusan: string;
   saldo: number;
 }
-
 
 // Data tiruan untuk grafik
 const chartData = {
@@ -104,7 +109,7 @@ function StatCard({
           {title}
         </p>
         {isLoading ? (
-          <LoaderCircle className="w-6 h-6 animate-spin mt-1" />
+          <div className="h-8 w-24 mt-1 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
         ) : (
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
             {value}
@@ -190,8 +195,14 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<Stats>({ totalSantri: 0, totalSaldo: 0, totalHutang: 0 });
   const [topSantri, setTopSantri] = useState<TopSantri[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // --- FIX: State untuk menyimpan nama pengguna, hanya di-set di client ---
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
+    // --- FIX: Ambil nama dari cookie setelah komponen ter-mount di client ---
+    setUserName(Cookies.get("name") || "Admin");
+
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
@@ -201,14 +212,19 @@ export default function DashboardPage() {
           getTotalHutang(),
           getTopBalanceSantri(),
         ]);
+        
+        // Pastikan ada data sebelum set state
         setStats({
-          totalSantri: santriData || 0,
-          totalSaldo: saldoData || 0,
-          totalHutang: hutangData || 0,
+          totalSantri: santriData?.data?.total || santriData || 0,
+          totalSaldo: saldoData?.data?.totalSaldo || saldoData || 0,
+          totalHutang: hutangData?.data?.totalHutang || hutangData || 0,
         });
-        setTopSantri(topSantriData || []);
+
+        setTopSantri(topSantriData?.data || topSantriData || []);
+
       } catch (error) {
         toast.error("Gagal memuat data dashboard.");
+        console.error("Dashboard fetch error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -228,8 +244,9 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard Overview
         </h1>
+        {/* --- FIX: Gunakan state `userName` untuk menampilkan nama --- */}
         <p className="mt-1 text-gray-600 dark:text-gray-400">
-          Selamat datang kembali, Admin!
+          {userName ? `Selamat datang kembali, ${userName}!` : "Memuat..."}
         </p>
       </div>
 
@@ -269,7 +286,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-semibold text-gray-700 dark:text-white">
               Aktivitas Keuangan
             </h2>
-            <div className="relative inline-block w-full text-gray-700 dark:text-white">
+            <div className="relative">
               <select
                 value={range}
                 onChange={(e) =>
@@ -298,7 +315,16 @@ export default function DashboardPage() {
           </h2>
           <ul className="space-y-4">
             {isLoading ? (
-              <p className="text-center text-gray-500">Memuat data...</p>
+               Array.from({ length: 5 }).map((_, i) => (
+                <li key={i} className="flex items-center animate-pulse">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 mr-3"></div>
+                  <div className="flex-grow space-y-2">
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+                    <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                  </div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                </li>
+              ))
             ) : (
               topSantri.slice(0, 7).map((santri, index) => (
                 <li key={santri.id} className="flex items-center">
@@ -310,14 +336,14 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="ml-3 flex-grow">
-                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
                       {santri.name}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {santri.kelas} {santri.jurusan}
                     </p>
                   </div>
-                  <p className="text-sm font-semibold text-green-600">
+                  <p className="text-sm font-semibold text-green-600 whitespace-nowrap">
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
                       currency: "IDR",
