@@ -235,3 +235,7 @@ export const deleteSantriBulk = (ids: number[]) => {
 export const getNotifications = () => {
   return fetchAPI('/notifications'); // Asumsi endpoint ini ada
 };
+
+export const getHistoryBySantriId = () => {
+  return fetchAPI('/history/santri/:id');
+}
