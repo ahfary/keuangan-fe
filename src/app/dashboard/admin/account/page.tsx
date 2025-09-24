@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -9,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
 import { createAccount } from "@/lib/api"; // Asumsi ada fungsi registerUser di api.ts
 import toast from "react-hot-toast";
-import Link from "next/link";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-[87vh] flex">
       <div className="flex flex-col justify-center items-center w-full md:w-1/2 bg-[#0B1224] px-8 py-10">
         <div className="flex items-center gap-2 mb-10">
           <Image src="/assets/img/wallet.png" alt="SakuSantri" width={30} height={30} />
@@ -169,10 +169,11 @@ export default function RegisterPage() {
         </form>
       </div>
 
-      <div className="hidden md:flex md:w-1/2 bg-[#513CFA] justify-center items-center">
+      <div className="hidden md:flex md:w-1/2 justify-center items-center">
         <Image
-          src="/assets/img/hero1.png"
+          src="/assets/img/proyek.png"
           alt="Illustration"
+          className="w-full object-cover h-full object-center"
           width={450}
           height={450}
           priority

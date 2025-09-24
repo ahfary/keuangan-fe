@@ -1,355 +1,251 @@
-// File: src/app/page.tsx
-// Kode final dan lengkap untuk Landing Page SakuSantri
+"use client";
 
-"use client"; 
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Wallet,
+  Users,
+  Trophy, // <-- Impor ikon piala
+  LoaderCircle,
+  ServerCrash,
+} from "lucide-react";
+import { getTopBalanceSantri } from "@/lib/api"; // <-- Gunakan API yang benar
 
-import React, { useState, FormEvent, useRef } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
-
-// --- Mock Data Santri (akan diganti dengan API call) ---
-const MOCK_SANTRI_DATA: { [key: string]: { name: string; class: string } } = {
-    'ST001': { name: 'Ahmad Yusuf', class: '3 Aliyah' },
-    'ST002': { name: 'Budi Santoso', class: '2 Tsanawiyah' },
-    'ST003': { name: 'Citra Lestari', class: '1 Aliyah' },
-};
-
-// --- Tipe Data ---
-interface SantriInfo {
-    name: string;
-    class: string;
+// Tipe data untuk santri
+interface Santri {
+  id: number;
+  name: string;
+  kelas: string;
+  saldo: number;
 }
 
-// Komponen untuk FAQ Accordion
-const FaqItem = ({
-  question,
-  answer,
-  isOpen,
-  onClick,
-}: {
-  question: string;
-  answer: string;
-  isOpen: boolean;
-  onClick: () => void;
-}) => {
-  return (
-    <div className="border-b border-gray-200 dark:border-gray-700 py-4">
-      <button
-        onClick={onClick}
-        className="w-full flex justify-between items-center text-left text-lg font-semibold text-gray-800 dark:text-gray-200"
-      >
-        <span>{question}</span>
-        <svg
-          className={`w-5 h-5 transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-        </svg>
-      </button>
-      {isOpen && (
-        <div className="mt-3 text-gray-600 dark:text-gray-400">
-          <p>{answer}</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
+// Komponen untuk ikon piala
+const rankIcons = [
+  <Trophy key="1" className="w-7 h-7 text-yellow-400" />,
+  <Trophy key="2" className="w-7 h-7 text-gray-400" />,
+  <Trophy key="3" className="w-7 h-7 text-orange-400" />,
+];
 
 export default function LandingPage() {
-    // --- Refs for Smooth Scrolling ---
-    const featuresRef = useRef<HTMLElement>(null);
-    const howItWorksRef = useRef<HTMLElement>(null);
-    const topUpRef = useRef<HTMLElement>(null);
-    const faqRef = useRef<HTMLElement>(null);
+  const [topSantri, setTopSantri] = useState<Santri[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-    // --- State Management ---
-    const [step, setStep] = useState(1);
-    const [santriId, setSantriId] = useState('');
-    const [searchError, setSearchError] = useState('');
-    const [foundSantri, setFoundSantri] = useState<SantriInfo | null>(null);
-    const [amount, setAmount] = useState('');
-    const [isMidtransModalOpen, setIsMidtransModalOpen] = useState(false);
-    const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
-    const [openFaq, setOpenFaq] = useState<number | null>(0);
-
-    // --- Event Handlers ---
-    const handleScrollTo = (ref: React.RefObject<HTMLElement>) => {
-        ref.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => {
+    const fetchTopSantri = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getTopBalanceSantri();
+        const santriData = response.data || response;
+        // Pastikan hanya menampilkan 5 data teratas
+        setTopSantri(santriData.slice(0, 5));
+      } catch (err) {
+        setError("Gagal memuat data papan peringkat.");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    const handleSearchSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        const santri = MOCK_SANTRI_DATA[santriId.trim().toUpperCase()];
-        if (santri) {
-            setFoundSantri(santri);
-            setSearchError('');
-            setStep(2);
-        } else {
-            setSearchError('Santri tidak ditemukan. Periksa kembali ID.');
-            setFoundSantri(null);
-        }
-    };
+    fetchTopSantri();
+  }, []);
 
-    const handleTopUpSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        setIsMidtransModalOpen(true);
-    };
-    
-    const handleSimulateSuccess = () => {
-        setIsMidtransModalOpen(false);
-        setIsSuccessModalOpen(true);
-    };
+  return (
+    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header dengan Navigasi */}
+      <header className="px-4 lg:px-6 h-16 flex items-center shadow-sm bg-white dark:bg-gray-950/50 backdrop-blur-sm sticky top-0 z-50">
+        <Link href="#" className="flex items-center justify-center">
+          <Wallet className="h-6 w-6 text-indigo-600" />
+          <span className="ml-2 text-lg font-bold text-gray-800 dark:text-white">
+            SakuSantri
+          </span>
+        </Link>
+        <nav className="ml-auto hidden md:flex gap-6">
+          <Link
+            href="#features"
+            className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+          >
+            Fitur
+          </Link>
+          <Link
+            href="#leaderboard"
+            className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+          >
+            Peringkat
+          </Link>
+          <Link
+            href="/auth/login"
+            className="text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+          >
+            Login
+          </Link>
+        </nav>
+        <Link href="/auth/login" className="ml-auto md:hidden">
+            <Button size="sm">Login</Button>
+        </Link>
+      </header>
 
-    const handleCloseSuccess = () => {
-        setIsSuccessModalOpen(false);
-        setStep(1);
-        setSantriId('');
-        setAmount('');
-        setFoundSantri(null);
-    };
-    
-    const faqData = [
-        { q: "Apakah platform SakuSantri aman digunakan?", a: "Tentu. Kami menggunakan enkripsi standar industri dan bekerja sama dengan gerbang pembayaran terpercaya (Midtrans) untuk memastikan semua transaksi aman dan terlindungi." },
-        { q: "Berapa biaya administrasi untuk setiap top-up?", a: "Biaya administrasi akan bervariasi tergantung pada metode pembayaran yang Anda pilih melalui Midtrans. Semua biaya akan ditampilkan secara transparan sebelum Anda menyelesaikan pembayaran." },
-        { q: "Bagaimana jika saya salah transfer atau salah memasukkan ID Santri?", a: "Jika Anda salah memasukkan ID, sistem akan menolak transaksi. Jika Anda salah transfer, silakan segera hubungi pihak administrasi pondok dengan membawa bukti transfer untuk penanganan lebih lanjut." },
-        { q: "Bagaimana saya bisa memantau pengeluaran anak saya?", a: "Setelah top-up pertama berhasil, Anda akan mendapatkan akses ke aplikasi mobile khusus orang tua. Di sana Anda bisa melihat saldo dan semua riwayat transaksi anak Anda secara real-time." },
-    ];
-
-    return (
-        <div className="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-            {/* Header */}
-            <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg fixed top-0 left-0 right-0 z-30 shadow-sm">
-                <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">SakuSantri</h1>
-                    <nav className="hidden md:flex space-x-8">
-                        <button onClick={() => handleScrollTo(featuresRef)} className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors">Fitur</button>
-                        <button onClick={() => handleScrollTo(howItWorksRef)} className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors">Cara Kerja</button>
-                        <button onClick={() => handleScrollTo(faqRef)} className="text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 transition-colors">FAQ</button>
-                    </nav>
-                    <Link href="/auth/login" className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors">
-                        Login Admin
-                    </Link>
+      <main className="flex-1">
+        {/* Hero Section */}
+        <section className="w-full pt-24 pb-16 md:pt-32 md:pb-24 lg:pt-40 lg:pb-32 bg-white dark:bg-gray-950">
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="grid gap-8 lg:grid-cols-2 lg:gap-12 xl:gap-20">
+              <div className="flex flex-col justify-center space-y-6">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none text-gray-900 dark:text-white">
+                  Modernisasi Keuangan Pesantren Anda
+                </h1>
+                <p className="max-w-[600px] text-gray-500 md:text-xl dark:text-gray-400">
+                  SakuSantri adalah platform digital untuk mengelola keuangan
+                  santri secara non-tunai, memberikan kemudahan bagi admin dan
+                  transparansi penuh bagi wali santri.
+                </p>
+                <div className="flex">
+                  <Link href="/auth/login?role=Admin">
+                    <Button size="lg">
+                      Masuk Dashboard Admin
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
                 </div>
-            </header>
+              </div>
+              <Image
+                src="/assets/img/hero.png"
+                width={550}
+                height={550}
+                alt="Hero"
+                className="mx-auto aspect-square overflow-hidden rounded-xl object-contain"
+              />
+            </div>
+          </div>
+        </section>
 
-            <main>
-                {/* Hero Section */}
-                <section id="hero" className="pt-32 pb-20 bg-white dark:bg-gray-800">
-                    <div className="container mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
-                        <div className="text-center md:text-left">
-                            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 dark:text-white leading-tight">
-                                Modernkan Uang Saku, <span className="text-indigo-600">Tenangkan Hati.</span>
-                            </h2>
-                            <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-                                Kirim dan pantau uang jajan putra-putri Anda di pesantren dengan mudah, aman, dan transparan. Cukup dari rumah.
-                            </p>
-                            <div className="mt-8">
-                                <button onClick={() => handleScrollTo(topUpRef)} className="inline-block px-8 py-4 text-lg font-bold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-transform hover:scale-105">
-                                    Top-Up Saldo Sekarang
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <Image src="https://placehold.co/600x400/E9D5FF/4C1D95?text=Aplikasi+SakuSantri" alt="Ilustrasi Aplikasi SakuSantri" width={600} height={400} className="rounded-2xl shadow-2xl mx-auto" />
-                        </div>
-                    </div>
-                </section>
-
-                {/* Features Section */}
-                <section ref={featuresRef} id="features" className="py-20">
-                    <div className="container mx-auto px-6 text-center">
-                        <h3 className="text-3xl font-bold">Kenapa SakuSantri?</h3>
-                        <p className="mt-2 text-gray-600 dark:text-gray-400">Platform terpadu untuk semua kebutuhan keuangan santri.</p>
-                        <div className="mt-12 grid md:grid-cols-3 gap-8">
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-                                <h4 className="mt-4 text-xl font-bold">Top-Up Mudah</h4>
-                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Kirim uang saku kapan saja melalui berbagai metode pembayaran online yang aman.</p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-                               <h4 className="mt-4 text-xl font-bold">Transaksi Aman</h4>
-                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Santri bertransaksi tanpa uang tunai (cashless) di lingkungan pondok, mengurangi risiko kehilangan.</p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-                                <h4 className="mt-4 text-xl font-bold">Laporan Transparan</h4>
-                                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Pantau semua riwayat pengeluaran anak Anda secara real-time melalui aplikasi khusus orang tua.</p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* How It Works Section */}
-                <section ref={howItWorksRef} id="how-it-works" className="py-20 bg-white dark:bg-gray-800">
-                    <div className="container mx-auto px-6 text-center">
-                        <h3 className="text-3xl font-bold">Hanya 3 Langkah Mudah</h3>
-                        <p className="mt-2 text-gray-600 dark:text-gray-400">Proses cepat dan intuitif untuk kenyamanan Anda.</p>
-                        <div className="mt-12 grid md:grid-cols-3 gap-8 relative">
-                            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-gray-200 dark:bg-gray-700 transform -translate-y-1/2"></div>
-                            <div className="relative z-10 bg-white dark:bg-gray-800 p-4"><div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg border-2 border-indigo-200 dark:border-indigo-800"><div className="mx-auto w-16 h-16 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/50 rounded-full text-indigo-600 dark:text-indigo-300 font-bold text-2xl">1</div><h4 className="mt-4 text-xl font-bold">Isi Data & Nominal</h4><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Masukkan ID santri dan jumlah uang yang ingin Anda kirim.</p></div></div>
-                            <div className="relative z-10 bg-white dark:bg-gray-800 p-4"><div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg border-2 border-indigo-200 dark:border-indigo-800"><div className="mx-auto w-16 h-16 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/50 rounded-full text-indigo-600 dark:text-indigo-300 font-bold text-2xl">2</div><h4 className="mt-4 text-xl font-bold">Lakukan Pembayaran</h4><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Pilih metode pembayaran yang paling nyaman bagi Anda via Midtrans.</p></div></div>
-                            <div className="relative z-10 bg-white dark:bg-gray-800 p-4"><div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg border-2 border-indigo-200 dark:border-indigo-800"><div className="mx-auto w-16 h-16 flex items-center justify-center bg-indigo-100 dark:bg-indigo-900/50 rounded-full text-indigo-600 dark:text-indigo-300 font-bold text-2xl">3</div><h4 className="mt-4 text-xl font-bold">Saldo Terkirim</h4><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Setelah terverifikasi, saldo langsung masuk ke akun santri dan siap digunakan.</p></div></div>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Top-Up Form Section */}
-                <section ref={topUpRef} id="top-up" className="py-20 bg-white dark:bg-gray-800">
-                    <div className="container mx-auto px-6 max-w-2xl">
-                        <div className="text-center">
-                            <h3 className="text-3xl font-bold">Formulir Top-Up Saldo Santri</h3>
-                            <p className="mt-2 text-gray-600 dark:text-gray-400">Ikuti langkah-langkah mudah di bawah ini untuk mengirim uang saku.</p>
-                        </div>
-                        <div className="mt-12 bg-white dark:bg-gray-700 p-8 rounded-2xl shadow-2xl">
-                            {step === 1 && (
-                                <form onSubmit={handleSearchSubmit}>
-                                    <label htmlFor="santri-id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Masukkan ID Santri</label>
-                                    <div className="mt-2 flex gap-3">
-                                        <input type="text" id="santri-id" value={santriId} onChange={(e) => setSantriId(e.target.value)} placeholder="Contoh: ST001" className="flex-grow h-12 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-lg ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800" required />
-                                        <button type="submit" className="h-12 px-6 font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Cari</button>
-                                    </div>
-                                    {searchError && <p className="mt-2 text-sm text-red-500">{searchError}</p>}
-                                </form>
-                            )}
-                            {step === 2 && foundSantri && (
-                                <div>
-                                    <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-900/50 rounded-lg">
-                                        <p className="text-sm text-gray-600 dark:text-gray-300">Mengirim untuk:</p>
-                                        <p className="font-bold text-lg text-indigo-800 dark:text-indigo-200">{foundSantri.name}</p>
-                                        <p className="text-sm text-indigo-700 dark:text-indigo-300">{foundSantri.class}</p>
-                                    </div>
-                                    <form onSubmit={handleTopUpSubmit}>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label htmlFor="amount" className="block text-sm font-medium">Nominal Transfer (Rp)</label>
-                                                <input type="number" id="amount" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="Minimal Rp 10.000" className="mt-1 h-12 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-lg ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800" required />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="proof" className="block text-sm font-medium">Upload Bukti Transfer (Opsional)</label>
-                                                <input type="file" id="proof" className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-gray-600 dark:file:text-indigo-300 dark:hover:file:bg-gray-500" />
-                                            </div>
-                                        </div>
-                                        <div className="mt-6">
-                                            <button type="submit" className="w-full h-12 px-6 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700">Lanjutkan Pembayaran</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* FAQ Section */}
-                <section ref={faqRef} id="faq" className="py-20">
-                    <div className="container mx-auto px-6 max-w-3xl">
-                        <div className="text-center">
-                            <h3 className="text-3xl font-bold">Tanya Jawab</h3>
-                            <p className="mt-2 text-gray-600 dark:text-gray-400">Pertanyaan yang sering diajukan oleh para pengguna.</p>
-                        </div>
-                        <div className="mt-8">
-                            {faqData.map((faq, index) => (
-                                <FaqItem 
-                                    key={index}
-                                    question={faq.q}
-                                    answer={faq.a}
-                                    isOpen={openFaq === index}
-                                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </section>
-                
-                {/* Testimonials Section */}
-                <section id="testimonials" className="py-20">
-                     <div className="container mx-auto px-6">
-                        <div className="text-center">
-                            <h3 className="text-3xl font-bold">Apa Kata Mereka?</h3>
-                            <p className="mt-2 text-gray-600 dark:text-gray-400">Kami bangga dapat membantu memudahkan urusan keuangan di pesantren.</p>
-                        </div>
-                        <div className="mt-12 grid md:grid-cols-2 gap-8">
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-                                <p className="text-gray-600 dark:text-gray-300">"SakuSantri sangat membantu kami sebagai orang tua. Tidak perlu lagi repot-repot datang ke pondok hanya untuk memberi uang saku. Semuanya bisa dari rumah."</p>
-                                <div className="mt-4 flex items-center">
-                                    <Image src="https://placehold.co/48x48/E0E7FF/4338CA?text=B" alt="Testimoni" width={48} height={48} className="rounded-full" />
-                                    <div className="ml-4">
-                                        <p className="font-bold text-gray-900 dark:text-white">Bapak Hermawan</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Wali Santri Kelas 2 Tsanawiyah</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-                                <p className="text-gray-600 dark:text-gray-300">"Dari sisi administrasi, aplikasi ini memotong banyak pekerjaan manual. Verifikasi transfer dan pencatatan jadi lebih cepat dan akurat. Sangat direkomendasikan."</p>
-                                <div className="mt-4 flex items-center">
-                                    <Image src="https://placehold.co/48x48/E0E7FF/4338CA?text=U" alt="Testimoni" width={48} height={48} className="rounded-full" />
-                                    <div className="ml-4">
-                                        <p className="font-bold text-gray-900 dark:text-white">Ustadz Abdullah</p>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Kepala Administrasi Keuangan</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            {/* Footer */}
-            <footer className="bg-gray-800 text-gray-300">
-                <div className="container mx-auto px-6 py-12">
-                    <div className="grid md:grid-cols-3 gap-8">
-                        <div>
-                            <h4 className="text-xl font-bold text-white">SakuSantri</h4>
-                            <p className="mt-2 text-sm text-gray-400">Memodernisasi keuangan di lingkungan pesantren untuk masa depan yang lebih baik.</p>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-white">Navigasi</h4>
-                            <ul className="mt-4 space-y-2 text-sm">
-                                <li><button onClick={() => handleScrollTo(featuresRef)} className="hover:text-indigo-400">Fitur</button></li>
-                                <li><button onClick={() => handleScrollTo(howItWorksRef)} className="hover:text-indigo-400">Cara Kerja</button></li>
-                                <li><button onClick={() => handleScrollTo(faqRef)} className="hover:text-indigo-400">FAQ</button></li>
-                                <li><Link href="/auth/login" className="hover:text-indigo-400">Login Admin</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-white">Kontak</h4>
-                            <ul className="mt-4 space-y-2 text-sm">
-                                <li>Email: <a href="mailto:info@sakusantri.com" className="hover:text-indigo-400">info@sakusantri.com</a></li>
-                                <li>Telepon: (021) 123-4567</li>
-                            </ul>
-                        </div>
-                    </div>
-                    <div className="mt-12 pt-8 border-t border-gray-700 text-center text-sm text-gray-500">
-                        <p>&copy; {new Date().getFullYear()} SakuSantri. Semua Hak Cipta Dilindungi.</p>
-                    </div>
+        {/* Features Section */}
+        <section
+          id="features"
+          className="w-full py-16 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900"
+        >
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
+                Solusi Keuangan Digital Terintegrasi
+              </h2>
+              <p className="mt-4 max-w-3xl mx-auto text-gray-500 md:text-xl/relaxed dark:text-gray-400">
+                Dari transaksi harian hingga pemantauan oleh wali, SakuSantri
+                menyederhanakan semua aspek keuangan di pesantren.
+              </p>
+            </div>
+            <div className="mx-auto grid max-w-5xl gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3">
+              <div className="flex flex-col items-center text-center p-6 bg-white dark:bg-gray-950 rounded-lg shadow-md transition-transform hover:scale-105">
+                <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mb-4">
+                  <Wallet className="w-8 h-8 text-indigo-600" />
                 </div>
-            </footer>
+                <h3 className="text-xl font-bold mb-2">Transaksi Cashless</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Aman, cepat, dan tercatat. Minimalkan risiko kehilangan uang
+                  dan permudah transaksi di kantin.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 bg-white dark:bg-gray-950 rounded-lg shadow-md transition-transform hover:scale-105">
+                <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mb-4">
+                  <ShieldCheck className="w-8 h-8 text-indigo-600" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Transparansi Penuh</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Wali santri dapat memantau setiap pengeluaran dan sisa saldo
+                  anaknya secara real-time.
+                </p>
+              </div>
+              <div className="flex flex-col items-center text-center p-6 bg-white dark:bg-gray-950 rounded-lg shadow-md transition-transform hover:scale-105">
+                <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mb-4">
+                  <Users className="w-8 h-8 text-indigo-600" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">Manajemen Terpusat</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Admin dapat mengelola data santri, kantin, dan laporan
+                  keuangan dalam satu platform terpusat.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            {/* Modals (Midtrans, Success) */}
-            {isMidtransModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm">
-                        <div className="p-4 border-b"><h3 className="text-lg font-semibold text-gray-900 dark:text-white">Simulasi Pembayaran</h3></div>
-                        <div className="p-6 text-center">
-                            <p className="text-gray-700 dark:text-gray-300 mb-4">Di aplikasi nyata, jendela pembayaran Midtrans akan terbuka di sini.</p>
-                            <button onClick={handleSimulateSuccess} className="w-full px-4 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700">Simulasikan Pembayaran Berhasil</button>
-                        </div>
-                    </div>
+        {/* Top Santri Leaderboard Section */}
+        <section
+          id="leaderboard"
+          className="w-full py-16 md:py-24 lg:py-32 bg-white dark:bg-gray-950"
+        >
+          <div className="container mx-auto px-4 md:px-6">
+            <div className="text-center mb-12">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                    Papan Peringkat Santri
+                </h2>
+                <p className="mt-4 max-w-3xl mx-auto text-gray-500 md:text-xl/relaxed dark:text-gray-400">
+                    Apresiasi bagi santri dengan manajemen keuangan terbaik. Mari
+                    tingkatkan terus budaya menabung!
+                </p>
+            </div>
+            <div className="mx-auto max-w-3xl">
+              {isLoading ? (
+                <div className="flex justify-center items-center h-40">
+                  <LoaderCircle className="w-8 h-8 animate-spin text-indigo-600" />
                 </div>
-            )}
-            {isSuccessModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
-                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-8 text-center">
-                        <div className="mx-auto bg-green-100 rounded-full h-16 w-16 flex items-center justify-center">
-                            <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                        </div>
-                        <h3 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">Top-Up Berhasil!</h3>
-                        <p className="mt-2 text-gray-600 dark:text-gray-300">Permintaan top-up Anda sedang diproses dan akan diverifikasi oleh admin pondok.</p>
-                        <button onClick={handleCloseSuccess} className="mt-6 w-full px-4 py-2 font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700">Selesai</button>
-                    </div>
+              ) : error ? (
+                <div className="flex flex-col items-center text-center h-40 justify-center">
+                  <ServerCrash className="w-10 h-10 text-red-500 mb-2" />
+                  <p className="text-red-500">{error}</p>
                 </div>
-            )}
+              ) : (
+                <ul className="space-y-4">
+                  {topSantri.slice(0, 5).map((santri, index) => (
+                    <li
+                      key={santri.id}
+                      className="flex items-center p-4 bg-gray-50 dark:bg-gray-900 rounded-lg shadow-sm"
+                    >
+                      {/* --- KODE IKON PIALA --- */}
+                      <div className="flex items-center justify-center w-12 h-12 text-xl font-bold mr-4">
+                        {index < 3 ? rankIcons[index] : 
+                          <span className="flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600">
+                            {index + 1}
+                          </span>
+                        }
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 dark:text-white">
+                          {santri.name}
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          {santri.kelas}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg text-green-600">
+                          {new Intl.NumberFormat("id-ID", {
+                            style: "currency",
+                            currency: "IDR",
+                            minimumFractionDigits: 0,
+                          }).format(santri.saldo)}
+                        </p>
+                        <p className="text-xs text-gray-500">Saldo Saat Ini</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Footer */}
+      <footer className="flex items-center justify-between p-4 bg-gray-100 dark:bg-gray-800">
+        <div className="text-sm text-gray-600 dark:text-gray-400">
+          © {new Date().getFullYear()} SakuSantri. All rights reserved.
         </div>
-    );
+      </footer>
+    </div>
+  );
 }

@@ -1,85 +1,126 @@
-    "use client";
+"use client";
 
-    import React, { useState, useRef, useEffect } from "react";
-    import { Bell } from "lucide-react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { Bell, LoaderCircle } from "lucide-react";
+import { getNotifications } from "@/lib/api";
+import toast from "react-hot-toast";
+import { cn } from "@/lib/utils";
 
-    export default function NotificationDropdown() {
-    const [showDropdown, setShowDropdown] = useState(false);
-    const [activeTab, setActiveTab] = useState("Transfer");
-    const dropdownRef = useRef<HTMLDivElement>(null);
+// Tipe data untuk notifikasi
+interface Notification {
+  id: string;
+  type: 'Transfer' | 'Stock' | 'Piutang';
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+  amount?: number;
+}
 
-    const notifications = [
-        { name: "Sodikin baru saja Transfer", date: "05/08/2025", amount: "RP.2.000.000", unread: true },
-        { name: "Emorgan baru saja Transfer", date: "05/08/2025", amount: "RP.500.000", unread: false },
-        { name: "Suprianto baru saja Transfer", date: "05/08/2025", amount: "RP.700.000", unread: false },
-        { name: "Jokowo baru saja Transfer", date: "05/08/2025", amount: "RP.700.000", unread: false },
-    ];
+type TabType = 'Transfer' | 'Stock' | 'Piutang';
 
-    // Tutup dropdown kalau klik di luar
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-            setShowDropdown(false);
+export default function NotificationDropdown() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>("Transfer");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Ambil data notifikasi
+  useEffect(() => {
+    // Hanya fetch jika dropdown terbuka dan data belum ada
+    if (isOpen && notifications.length === 0) {
+      const fetchNotifications = async () => {
+        setIsLoading(true);
+        try {
+          // Data dummy untuk simulasi karena endpoint belum ada
+          const mockData: Notification[] = [
+            { id: '1', type: 'Transfer', message: 'Sodikin baru saja Transfer', timestamp: new Date().toISOString(), isRead: false, amount: 2000000 },
+            { id: '2', type: 'Transfer', message: 'Emorgan baru saja Transfer', timestamp: new Date().toISOString(), isRead: true, amount: 500000 },
+            { id: '3', type: 'Stock', message: 'Stok Kopi Hitam hampir habis', timestamp: new Date().toISOString(), isRead: false },
+            { id: '4', type: 'Piutang', message: 'Jatuh tempo hutang Ahmad Yusuf', timestamp: new Date().toISOString(), isRead: true },
+          ];
+          setNotifications(mockData);
+          // Ganti dengan kode di bawah ini jika endpoint /notifications sudah siap
+          // const data = await getNotifications();
+          // setNotifications(data);
+        } catch (error) {
+          toast.error("Gagal memuat notifikasi.");
+        } finally {
+          setIsLoading(false);
         }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, []);
-
-    return (
-        <div className="relative" ref={dropdownRef}>
-        {/* Tombol Bell */}
-        <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            className="relative p-2 rounded-full hover:bg-gray-800"
-        >
-            <Bell className="w-6 h-6 text-gray-300" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-        </button>
-
-        {showDropdown && (
-            <div
-            className="absolute right-0 mt-2 w-[900px] bg-[#0f172a] border border-gray-700 rounded-lg shadow-lg z-50"
-            >
-            {/* Tabs */}
-            <div className="flex justify-around border-b border-gray-700 p-5">
-                {["Transfer", "Stock", "Piutang"].map((tab) => (
-                <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-10 py-3 rounded-md font-medium text-lg transition ${
-                    activeTab === tab
-                        ? "bg-indigo-600 text-white"
-                        : "border border-indigo-600 text-indigo-400"
-                    }`}
-                >
-                    {tab}
-                </button>
-                ))}
-            </div>
-
-            {/* List Notifikasi */}
-            <div className="max-h-[500px] overflow-y-auto p-6 space-y-4">
-                {notifications.map((notif, idx) => (
-                <div
-                    key={idx}
-                    className="flex justify-between items-center bg-gray-700 rounded-lg px-6 py-5 relative"
-                >
-                    <p className="text-gray-200 text-lg font-medium">{notif.name}</p>
-                    <div className="flex items-center space-x-8">
-                    <span className="text-gray-400 text-base">{notif.date}</span>
-                    <span className="text-gray-200 font-semibold text-lg">{notif.amount}</span>
-                    </div>
-                    {notif.unread && (
-                    <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-                    )}
-                </div>
-                ))}
-            </div>
-            </div>
-        )}
-        </div>
-    );
+      };
+      fetchNotifications();
     }
+  }, [isOpen, notifications.length]);
+
+  // Tutup dropdown saat klik di luar
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+  const filteredNotifications = useMemo(() => notifications.filter(n => n.type === activeTab), [notifications, activeTab]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button onClick={() => setIsOpen(!isOpen)} className="relative p-2 rounded-full hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <Bell className="w-6 h-6 text-gray-300" />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-lg z-50">
+          <div className="p-3 border-b dark:border-gray-700">
+            <h3 className="font-semibold text-lg">Notifikasi</h3>
+          </div>
+          <div className="flex border-b dark:border-gray-700">
+            {(['Transfer', 'Stock', 'Piutang'] as TabType[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={cn(
+                  "flex-1 py-2 text-sm font-medium",
+                  activeTab === tab ? "border-b-2 border-indigo-500 text-indigo-500" : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                )}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="max-h-80 overflow-y-auto">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-24"><LoaderCircle className="w-6 h-6 animate-spin" /></div>
+            ) : filteredNotifications.length > 0 ? (
+              filteredNotifications.map((notif) => (
+                <div key={notif.id} className={cn("flex items-start gap-3 p-3 border-b dark:border-gray-700", !notif.isRead && "bg-indigo-500/10")}>
+                  {!notif.isRead && <div className="w-2 h-2 mt-1.5 rounded-full bg-indigo-500 flex-shrink-0"></div>}
+                  <div className="flex-grow">
+                    <p className="text-sm">{notif.message}</p>
+                    {notif.amount && (
+                      <p className="text-sm font-bold text-green-500">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(notif.amount)}</p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">{new Date(notif.timestamp).toLocaleString('id-ID')}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-sm text-gray-500 py-10">Tidak ada notifikasi {activeTab}.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

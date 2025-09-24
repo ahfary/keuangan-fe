@@ -227,7 +227,9 @@ export default function SantriPage() {
         .includes(searchTerm.toLowerCase());
 
       if (filterType === "kelas") {
-        return matchesSearch && (!selectedKelas || santri.kelas === selectedKelas);
+        return (
+          matchesSearch && (!selectedKelas || santri.kelas === selectedKelas)
+        );
       }
       if (filterType === "jurusan") {
         return (
@@ -494,11 +496,16 @@ export default function SantriPage() {
                   </td>
                 </tr>
               )}
+              <tr>
+                <td>
+                  <div className="p-4 flex justify-start">
+                    <PaginationControls />
+                  </div>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
-
-        <PaginationControls />
       </div>
 
       {/* Modal untuk Tambah/Edit */}

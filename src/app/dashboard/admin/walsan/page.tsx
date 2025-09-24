@@ -206,7 +206,6 @@ export default function WalsanListPage() {
           <table className="w-full text-left">
             <thead className="bg-gray-50 dark:bg-gray-700">
               <tr>
-                <th className="p-4 font-semibold"></th>
                 <th className="p-4 font-semibold">Email Walsan</th>
                 <th className="p-4 font-semibold">Nama Anak</th>
                 <th className="p-4 font-semibold text-center">Aksi</th>

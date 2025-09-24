@@ -28,6 +28,7 @@ export default function LoginPage() {
       const data = await loginUser(email, password, role);
       if (data.access_token && data.role) {
         Cookies.set("accessToken", data.accessToken, { expires: 1, secure: true });
+        Cookies.set("name", data.name, { expires: 1, secure: true });
         Cookies.set("userRole", data.role, { expires: 1, secure: true });
 
         if (data.role === 'wali santri') {
