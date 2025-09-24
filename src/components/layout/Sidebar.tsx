@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, DollarSign, ShoppingCart, BarChart2, ChevronDown, ChevronRight, Circle, LogOut, User2 } from 'lucide-react';
+import { Home, Users, DollarSign, ShoppingCart, BarChart2, User, ChevronDown, ChevronRight, Circle, LogOut, User2, UserCog } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
 
@@ -18,7 +18,8 @@ interface NavItem {
 const adminMenu: NavItem[] = [
   { href: '/dashboard/admin', icon: Home, label: 'Dashboard' },
   { href: '/dashboard/admin/santri', icon: Users, label: 'Santri' },
-  { href: '/dashboard/admin/account', icon: User2, label: 'Account' },
+ { href: '/dashboard/admin/walsan', icon: UserCog, label: 'Walsan' }, 
+   { href: '/dashboard/admin/account', icon: User2, label: 'Account' },
   // { href: '/dashboard/admin/topup', icon: DollarSign, label: 'Top Up' },
   { href: '/dashboard/admin/kantin', icon: ShoppingCart, label: 'Kantin' },
   // { href: '/dashboard/admin/laporan', icon: BarChart2, label: 'Laporan' },

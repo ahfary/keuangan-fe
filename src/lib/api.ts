@@ -30,6 +30,7 @@ const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
   return responseData.data || responseData;
 };
 
+
 // =========================================
 //         FUNGSI AUTENTIKASI
 // =========================================
@@ -223,4 +224,12 @@ export const getHistoryBySantriId = (
   }
   return fetchAPI(endpoint);
 };
+
+
+// --- TAMBAHKAN FUNGSI BARU INI ---
+export const getWalsanList = () => {
+  // Pastikan URL-nya mengarah ke '/santri/walsan'
+  return fetchAPI('/santri/walsan'); 
+};// ------------------------------------
+
 

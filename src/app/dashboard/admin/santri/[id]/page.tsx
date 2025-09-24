@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, FormEvent } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+// --- MODIFIKASI: Tambahkan useRouter ---
+import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Wallet,
@@ -13,19 +14,24 @@ import {
   User,
   X,
   SearchX,
+  // --- MODIFIKASI: Tambahkan ikon baru ---
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+// --- MODIFIKASI: Tambahkan getWalsanList ---
 import {
   getSantriDetail,
   getHistoryBySantriId,
   updateSantriDetail,
   generateWalsan,
+  getWalsanList, // Pastikan fungsi ini ada di api.ts
 } from "@/lib/api";
 import toast from "react-hot-toast";
 
-// --- Tipe Data Disesuaikan dengan API ---
+// --- Tipe Data (Tidak ada perubahan) ---
 interface SantriDetail {
   id: number;
   name: string;
@@ -72,17 +78,17 @@ const Tabs = ({ tabs, activeTab, setActiveTab }: any) => (
   </div>
 );
 
-// --- Komponen Daftar Transaksi (INI YANG DIPERBAIKI) ---
+// --- Komponen Daftar Transaksi (Tidak ada perubahan) ---
 const TransactionList = ({ transactions }: { transactions: Transaction[] }) => {
-  // "Membongkar" setiap transaksi menjadi daftar item individual
-  const flatItems = transactions.flatMap(tx =>
-    // Pastikan tx.items ada sebelum di-map untuk menghindari error
-    tx.items ? tx.items.map(item => ({
-      id: `${tx.id}-${item.id}`,
-      description: item.itemName, 
-      amount: item.priceAtPurchase * item.quantity,
-      date: tx.createdAt,
-    })) : []
+  const flatItems = transactions.flatMap((tx) =>
+    tx.items
+      ? tx.items.map((item) => ({
+          id: `${tx.id}-${item.id}`,
+          description: item.itemName,
+          amount: item.priceAtPurchase * item.quantity,
+          date: tx.createdAt,
+        }))
+      : []
   );
 
   return (
@@ -122,7 +128,6 @@ const TransactionList = ({ transactions }: { transactions: Transaction[] }) => {
     </div>
   );
 };
-
 
 // --- Komponen Modal Edit Santri (Tidak ada perubahan) ---
 const EditSantriModal = ({
@@ -196,10 +201,109 @@ const EditSantriModal = ({
   );
 };
 
+// --- Komponen Modal Info Akun Walsan (Tidak ada perubahan) ---
+const WalsanInfoModal = ({
+  isOpen,
+  onClose,
+  credentials,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  credentials: { email: string; password?: string } | null;
+}) => {
+  const router = useRouter();
+  const [hasCopiedEmail, setHasCopiedEmail] = useState(false);
+  const [hasCopiedPassword, setHasCopiedPassword] = useState(false);
+
+  if (!isOpen || !credentials) return null;
+
+  const copyToClipboard = (text: string, type: "email" | "password") => {
+    navigator.clipboard.writeText(text);
+    if (type === "email") setHasCopiedEmail(true);
+    else setHasCopiedPassword(true);
+
+    toast.success(`${type === "email" ? "Email" : "Password"} berhasil disalin!`);
+
+    setTimeout(() => {
+      if (type === "email") setHasCopiedEmail(false);
+      else setHasCopiedPassword(false);
+    }, 2000);
+  };
+
+  const handleSuccessRedirect = () => {
+    onClose();
+    router.push("/dashboard/admin/walsan");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
+        <div className="text-center">
+          <div className="mx-auto bg-green-100 dark:bg-green-900 rounded-full h-16 w-16 flex items-center justify-center">
+            <Check className="w-10 h-10 text-green-600" />
+          </div>
+          <h3 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
+            Informasi Akun Walsan
+          </h3>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Berikut adalah email dan password untuk login wali santri.
+          </p>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div>
+            <Label>Email</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                readOnly
+                value={credentials.email}
+                className="truncate"
+              />
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => copyToClipboard(credentials.email, "email")}
+              >
+                {hasCopiedEmail ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label>Password Default</Label>
+            <div className="flex items-center gap-2">
+              <Input readOnly value="smkmqbisa" />
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => copyToClipboard("smkmqbisa", "password")}
+              >
+                {hasCopiedPassword ? (
+                  <Check className="w-4 h-4 text-green-500" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <Button onClick={handleSuccessRedirect} className="mt-6 w-full">
+          Berhasil
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 // --- Halaman Detail Santri ---
 export default function SantriDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const router = useRouter();
 
   const [santri, setSantri] = useState<SantriDetail | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -208,6 +312,12 @@ export default function SantriDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("Riwayat Jajan");
+
+  const [isWalsanInfoModalOpen, setIsWalsanInfoModalOpen] = useState(false);
+  const [generatedWalsanCreds, setGeneratedWalsanCreds] = useState<{
+    email: string;
+    password?: string;
+  } | null>(null);
 
   useEffect(() => {
     const fetchSantriData = async () => {
@@ -243,11 +353,6 @@ export default function SantriDetailPage() {
 
         if (activeTab !== "Riwayat Tarik Tunai") {
           const transactionData = await getHistoryBySantriId(id, token, status);
-          
-          // --- INI BAGIAN PENTING UNTUK DEBUG ---
-          console.log("Data dari API:", transactionData);
-          // ------------------------------------
-
           setTransactions(transactionData);
         } else {
           setTransactions([]);
@@ -261,10 +366,9 @@ export default function SantriDetailPage() {
         setIsTxLoading(false);
       }
     };
-
     fetchTransactions();
   }, [id, activeTab]);
-
+  
   const handleUpdateSantri = async (data: SantriEditData) => {
     if (!santri) return;
     const token = localStorage.getItem("accessToken") || "";
@@ -280,6 +384,66 @@ export default function SantriDetailPage() {
     });
   };
 
+  // --- MODIFIKASI: Fungsi generate walsan yang lebih cerdas ---
+  const handleGenerateWalsan = async () => {
+    if (!santri) return;
+
+    const token = localStorage.getItem("accessToken") || "";
+    const loadingToastId = toast.loading("Memproses permintaan...");
+
+    try {
+      // 1. Coba buat akun baru
+      const response = await generateWalsan(santri.id, token);
+      toast.dismiss(loadingToastId);
+      
+      const email = response?.data?.user?.email || response?.user?.email;
+      if (!email) {
+          throw new Error("Email tidak ditemukan dalam respons API.");
+      }
+
+      // Jika berhasil, tampilkan popup dengan data baru
+      setGeneratedWalsanCreds({ email, password: "smkmqbisa" });
+      setIsWalsanInfoModalOpen(true);
+      toast.success(`Akun baru untuk ${email} berhasil dibuat!`);
+
+    } catch (error: any) {
+      toast.dismiss(loadingToastId);
+
+      // 2. Jika errornya adalah 409 Conflict (akun sudah ada)
+      if (error.message && error.message.includes('sudah memiliki walsan')) {
+        const loadingDetailsToast = toast.loading('Akun sudah ada, mengambil detail...');
+        
+        try {
+          // 3. Ambil seluruh daftar walsan
+          const walsanList = await getWalsanList();
+          
+          // 4. Cari walsan yang terkait dengan santri ini
+          const existingWalsan = walsanList.find((w: any) =>
+            w.parent?.santri?.some((s: any) => s.id === santri.id)
+          );
+          
+          toast.dismiss(loadingDetailsToast);
+
+          if (existingWalsan) {
+            // 5. Jika ketemu, tampilkan popup dengan data yang sudah ada
+            setGeneratedWalsanCreds({ email: existingWalsan.email, password: "smkmqbisa" });
+            setIsWalsanInfoModalOpen(true);
+            toast.success('Menampilkan data akun yang sudah ada.');
+          } else {
+            toast.error('Gagal mengambil detail akun yang sudah ada.');
+          }
+        } catch (fetchError: any) {
+          toast.dismiss(loadingDetailsToast);
+          toast.error(`Gagal mengambil daftar walsan: ${fetchError.message}`);
+        }
+      } else {
+        // 6. Jika error lain, tampilkan pesan error seperti biasa
+        toast.error(`Gagal memproses: ${error.message}`);
+      }
+    }
+  };
+
+  // --- Render Logic (Tidak ada perubahan) ---
   if (isLoading)
     return (
       <div className="flex justify-center items-center h-full pt-20">
@@ -312,6 +476,7 @@ export default function SantriDetailPage() {
   return (
     <>
       <div className="flex flex-col h-full space-y-6">
+        {/* Header dan Info Santri */}
         <div>
           <Link
             href="/dashboard/admin/santri"
@@ -321,7 +486,6 @@ export default function SantriDetailPage() {
             Kembali ke Daftar Santri
           </Link>
         </div>
-
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center justify-between flex-shrink-0">
           <div className="flex items-center">
             <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mr-6">
@@ -341,26 +505,14 @@ export default function SantriDetailPage() {
               <Edit className="w-4 h-4 mr-2" />
               Edit Data
             </Button>
-            <Button
-              variant="default"
-              onClick={() => {
-                if (!santri) return;
-                const token = localStorage.getItem("accessToken") || "";
-                toast.promise(generateWalsan(santri.id, token), {
-                  loading: "Membuat akun walsan...",
-                  success: (res: any) => {
-                    const email = res?.data?.user?.email || "tidak ada email";
-                    return `✅ Akun walsan berhasil dibuat!\n\nEmail: ${email}\nPassword: smkmqbisa\n\nGunakan ini untuk login.`;
-                  },
-                  error: (err) => `Gagal: ${err.message}`,
-                });
-              }}
-            >
+            {/* --- Tombol ini sekarang menggunakan logika baru --- */}
+            <Button variant="default" onClick={handleGenerateWalsan}>
               Generate Akun Walsan
             </Button>
           </div>
         </div>
 
+        {/* Saldo dan Riwayat Transaksi */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
           <div className="md:col-span-1 flex flex-col gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-1 items-center">
@@ -388,7 +540,6 @@ export default function SantriDetailPage() {
               </div>
             </div>
           </div>
-
           <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col">
             <h2 className="text-xl font-semibold mb-4 flex items-center flex-shrink-0">
               <History className="w-5 h-5 mr-3" />
@@ -414,6 +565,7 @@ export default function SantriDetailPage() {
         </div>
       </div>
 
+      {/* Render Modals */}
       {santri && (
         <EditSantriModal
           santri={santri}
@@ -422,6 +574,12 @@ export default function SantriDetailPage() {
           onSave={handleUpdateSantri}
         />
       )}
+
+      <WalsanInfoModal
+        isOpen={isWalsanInfoModalOpen}
+        onClose={() => setIsWalsanInfoModalOpen(false)}
+        credentials={generatedWalsanCreds}
+      />
     </>
   );
-}
+} 
