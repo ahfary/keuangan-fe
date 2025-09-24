@@ -3,9 +3,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
-import { getSantriWithHutang } from '@/lib/api';
+// --- PERBAIKAN 1: Impor fungsi yang benar ---
+import { getSantriList } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 // --- Tipe Data untuk Santri yang Berhutang ---
@@ -32,8 +33,10 @@ export default function ManajemenHutangPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const data = await getSantriWithHutang();
-        setDataHutang(data);
+        // --- PERBAIKAN 2: Gunakan getSantriList dan filter hasilnya ---
+        const allSantri = await getSantriList();
+        const santriWithHutang = allSantri.filter((santri: SantriHutang) => santri.hutang > 0);
+        setDataHutang(santriWithHutang);
       } catch (error) {
         toast.error("Gagal mengambil data piutang santri.");
       } finally {
@@ -204,7 +207,7 @@ export default function ManajemenHutangPage() {
           <tbody className="divide-y dark:divide-gray-700">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="text-center p-8">Memuat data...</td>
+                <td colSpan={5} className="text-center p-8"><LoaderCircle className="w-6 h-6 animate-spin mx-auto" /></td>
               </tr>
             ) : paginatedData.length > 0 ? (
               paginatedData.map(santri => (

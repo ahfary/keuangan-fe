@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronDown, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getSalesHistory } from '@/lib/api';
+import { getSalesHistory, getAllItems } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 // --- Tipe Data Disesuaikan dengan API ---
@@ -32,12 +32,20 @@ interface SaleData {
   createdAt: string;
 }
 
+interface ItemData {
+  nama: string;
+  id: number;
+  name: string;
+  // tambahkan field lain jika perlu
+}
+
 const ITEMS_PER_PAGE = 6;
 
 // --- Komponen Utama Halaman Penjualan ---
 export default function PenjualanPage() {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [salesData, setSalesData] = useState<SaleData[]>([]);
+  const [itemsData, setItemsData] = useState<ItemData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // State untuk filter dan pencarian
@@ -53,10 +61,15 @@ export default function PenjualanPage() {
     const fetchSales = async () => {
       setIsLoading(true);
       try {
-        const data = await getSalesHistory();
-        setSalesData(Array.isArray(data) ? data : []);
+        const [sales, items] = await Promise.all([
+          getSalesHistory(),
+          getAllItems()
+        ]);
+        setSalesData(Array.isArray(sales) ? sales : []);
+        setItemsData(Array.isArray(items) ? items : []);
+        console.log("Items Data:", items); // DEBUG: cek isi data item
       } catch (error) {
-        toast.error("Gagal mengambil riwayat penjualan.");
+        toast.error("Gagal mengambil riwayat penjualan atau data item.");
       } finally {
         setIsLoading(false);
       }
@@ -138,6 +151,13 @@ export default function PenjualanPage() {
     </div>
   );
 
+
+  // Helper untuk cari nama item
+  const getItemName = (itemId: number) => {
+    const item = itemsData.find(i => i.id === itemId);
+    // Ganti 'name' dengan field yang sesuai jika berbeda
+    return item ? (item.nama || `Item ID: ${itemId}`) : `Item ID: ${itemId}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -236,7 +256,9 @@ export default function PenjualanPage() {
                         <ul className="space-y-1">
                           {sale.items.map((item) => (
                             <li key={item.id} className="flex justify-between text-gray-600 dark:text-gray-300 border-b border-dashed last:border-none py-1">
-                              <span>Item ID: {item.itemId} <span className="text-gray-400">x{item.quantity}</span></span>
+                              <span>
+                                {getItemName(item.itemId)} <span className="text-gray-400">x{item.quantity}</span>
+                              </span>
                               <span className="font-mono">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.priceAtPurchase * item.quantity)}</span>
                             </li>
                           ))}
