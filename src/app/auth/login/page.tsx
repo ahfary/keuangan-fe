@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -83,7 +84,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
-              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-4 bg-[#0B1224]/50"
+              className="bg-transparent border border-white/40 text-white placeholder:text-white/50 rounded-lg px-4 py-4"
             />
           </div>
 
