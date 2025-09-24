@@ -83,7 +83,7 @@ export const getTopBalanceSantri = () => {
 //           FUNGSI SANTRI
 // =========================================
 
-export const getSantriList = () => {
+export const getSantriList = (token?: string) => {
   return fetchAPI('/santri');
 };
 

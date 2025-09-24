@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,7 +7,6 @@ import {
   Wallet,
   Clock,
   ChevronDown,
-  LoaderCircle,
   Trophy,
 } from "lucide-react";
 import {

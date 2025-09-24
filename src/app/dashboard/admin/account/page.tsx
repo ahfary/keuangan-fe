@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState } from "react";
@@ -9,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
 import { createAccount } from "@/lib/api"; // Asumsi ada fungsi registerUser di api.ts
 import toast from "react-hot-toast";
-import Link from "next/link";
 
 export default function RegisterPage() {
   const router = useRouter();
