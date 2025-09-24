@@ -1,16 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Cookies from 'js-cookie';
 
-// 1. Konfigurasi dasar
-// Pastikan variabel ini ada di file .env.local Anda
-const API_BASE_URL = 'https://keuangan-santri-be.vercel.app'; // Ganti dengan URL backend Anda
+// 1. Konfigurasi Dasar
+const API_BASE_URL = 'https://keuangan-santri-be.vercel.app';
 
 /**
  * Fungsi helper terpusat untuk melakukan fetch request ke API.
- * Secara otomatis menyertakan token otentikasi dari cookies.
- * @param endpoint - Path API setelah base URL (misal: '/santri')
- * @param options - Opsi standar untuk fetch (method, body, dll.)
- * @returns {Promise<any>} - Data JSON dari respons API
+ * Secara otomatis menyertakan token otentikasi dan menangani respons.
  */
 const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
   const token = Cookies.get('accessToken');
@@ -19,212 +15,35 @@ const fetchAPI = async (endpoint: string, options: RequestInit = {}) => {
     ...options.headers,
   };
 
-  // Tambahkan header Authorization jika token ada
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    (headers as any)['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, { ...options, headers });
-  
-  // Penanganan respons DELETE yang mungkin tidak memiliki body
-  if (response.status === 204) {
+
+  if (response.status === 204) { // Handle No Content response for DELETE
     return { success: true };
   }
-  
+
   const responseData = await response.json();
 
   if (!response.ok) {
     throw new Error(responseData.message || 'Terjadi kesalahan pada server.');
   }
 
-  return responseData.data || responseData; // Sesuaikan dengan struktur respons BE
+  return responseData.data || responseData;
 };
 
 
 // =========================================
-//         FUNGSI AUTENTIKASI
+//  FUNGSI AUTENTIKASI & AKUN
 // =========================================
-
-export const loginUser = async (email : any, password : any, role : any) => {
-  // console.log(email, password, role)
+export const loginUser = (email: any, password: any, role: any) => {
   return fetchAPI('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password, role }),
   });
 };
-
-
-// =========================================
-//         FUNGSI DASHBOARD
-// =========================================
-
-export const getJumlahSantri = () => {
-  return fetchAPI('/santri');
-}
-
-export const getTotalSantri = () => {
-  return fetchAPI('/santri/count');
-}
-
-export const getTotalSaldo = () => {
-  return fetchAPI('/santri/total-saldo');
-}
-
-export const getTotalHutang = () => {
-  return fetchAPI('/santri/hutang');
-}
-
-export const getTopBalanceSantri = () => {
-  return fetchAPI('/santri/saldo-max');
-};
-
-
-// =========================================
-//           FUNGSI SANTRI
-// =========================================
-
-export const getSantriList = (token?: string) => {
-  return fetchAPI('/santri');
-};
-
-export const getSantriDetail = (id: string) => {
-  // BENARKAN: Ubah endpoint dari /santri/${id} menjadi /santri/detail/${id}
-  return fetchAPI(`/santri/detail/${id}`);
-};
-
-export const createSantri = (santriData: { name: string; kelas: string; jurusan: string; }) => {
-  return fetchAPI('/santri', {
-    method: 'POST',
-    body: JSON.stringify(santriData),
-  });
-};
-
-export const updateSantriDetail = (id: string, santriData: { name: string, kelas: string }) => {
-  return fetchAPI(`/santri/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(santriData),
-  });
-};
-
-export const deleteSantri = (id: string) => {
-  return fetchAPI(`/santri/${id}`, {
-    method: 'DELETE',
-  });
-};
-
-export const deductSantriBalance = (id: string, amount: number, description: string) => {
-  return fetchAPI(`/santri/${id}/deduct`, {
-    method: 'PATCH',
-    body: JSON.stringify({ jumlah: amount, deskripsi: description }),
-  });
-};
-
-export const getSantriWithHutang = async () => {
-  const allSantri = await fetchAPI('/santri');
-  return allSantri.filter((santri: any) => santri.hutang > 0);
-};
-
-
-// =========================================
-//      FUNGSI TRANSAKSI & STOK BARANG
-// =========================================
-
-export const getSantriTransactions = (id: string) => {
-  return fetchAPI(`/transaksi/santri/${id}`);
-};
-
-interface ItemData {
-  nama: string;
-  harga: number;
-  jumlah: number;
-  kategori: string;
-  gambar?: string;
-}
-
-export const getItems = () => {
-  return fetchAPI('/items');
-};
-
-export const getSalesHistory = () => {
-  return fetchAPI('/history');
-};
-
-// export const createItem = (itemData: ItemData) => {
-//   return fetchAPI('/items', {
-//     method: 'POST',
-//     body: JSON.stringify(itemData),
-//   });
-// };
-
-// export const updateItem = (id: number, itemData: Partial<ItemData>) => {
-//   return fetchAPI(`/items/${id}`, {
-//     method: 'PATCH',
-//     body: JSON.stringify(itemData),
-//   });
-// };
-
-// export const deleteItem = (id: number) => {
-//   return fetchAPI(`/items/${id}`, {
-//     method: 'DELETE',
-//   });
-// };
-
-// =========================================
-//         FUNGSI KATEGORI & ITEMS (CRUD)
-// =========================================
-
-/**
- * Mengambil semua data kategori.
- * @returns {Promise<any>} - Daftar semua kategori
- */
-export const getAllKategori = () => {
-    return fetchAPI('/kategori');
-};
-
-
-export const createItem = (itemData: any) => {
-    return fetchAPI('/items', itemData);
-};
-
-export const updateItem = (id: number | string, itemData: any) => {
-    return fetchAPI(`/items/${id}`, itemData);
-};
-
-export const deleteItem = (id: number | string) => {
-    return fetchAPI(`/items/${id}`);
-};
-
-export const createTopUpRequest = async (data: { santriId: string; amount: number; proof: File; }) => {
-    // Karena kita mengirim file, kita gunakan FormData
-    const formData = new FormData();
-    formData.append('santriId', data.santriId);
-    formData.append('amount', data.amount.toString());
-    formData.append('proof', data.proof);
-
-    // Kita tidak menggunakan fetchAPI helper karena headernya berbeda
-    const token = Cookies.get('accessToken');
-    const response = await fetch(`${API_BASE_URL}/topup/request`, { // Asumsi endpoint ini ada di BE
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            // 'Content-Type' akan diatur otomatis oleh browser untuk FormData
-        },
-        body: formData,
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Gagal mengirim permintaan top-up.');
-    }
-
-    return response.json();
-};
-
-// Fungsi untuk mendapatkan riwayat top-up wali santri
-export const getTopUpHistory = (santriId: string) => {
-    return fetchAPI(`/topup/history/${santriId}`); // Asumsi endpoint ini ada di BE
-};
-
 
 export const createAccount = (data: { name: string; email: string; password: string; role: string; }) => {
   return fetchAPI('/auth/register', {
@@ -235,30 +54,69 @@ export const createAccount = (data: { name: string; email: string; password: str
 
 export const generateWalsan = (santriId: number) => {
   return fetchAPI(`/auth/generate-walsan/${santriId}`, {
-    method: "POST",
+    method: 'POST',
   });
 };
 
-export const updateSantriBulk = async (ids: number[], data: any) => {
-  const res = await fetch(`${API_BASE_URL}/santri/update-bulk?id=${ids.join(',')}`, {
+// =========================================
+//  FUNGSI DASHBOARD
+// =========================================
+export const getTotalSantri = () => fetchAPI('/santri/count');
+export const getTotalSaldo = () => fetchAPI('/santri/total-saldo');
+export const getTotalHutang = () => fetchAPI('/santri/hutang');
+export const getTopBalanceSantri = () => fetchAPI('/santri/saldo-max');
+
+
+// =========================================
+//  FUNGSI SANTRI (CRUD & LAINNYA)
+// =========================================
+export const getSantriList = () => fetchAPI('/santri');
+export const getWalsanList = () => fetchAPI('/santri/walsan');
+export const getSantriDetail = (id: string) => fetchAPI(`/santri/detail/${id}`);
+
+export const createSantri = (santriData: { name: string; kelas: string; jurusan: string; }) => {
+  return fetchAPI('/santri', {
+    method: 'POST',
+    body: JSON.stringify(santriData),
+  });
+};
+
+/**
+ * [FIXED] Mengubah method menjadi 'PUT' dan endpoint menjadi '/santri/update/:id'
+ * agar sesuai dengan backend controller.
+ */
+export const updateSantriDetail = (id: string, santriData: { name: string, kelas: string }) => {
+  return fetchAPI(`/santri/update/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(santriData),
+  });
+};
+
+/**
+ * [FIXED] Mengubah endpoint menjadi '/santri/delete/:id' agar sesuai dengan backend.
+ */
+export const deleteSantri = (id: string) => {
+  return fetchAPI(`/santri/delete/${id}`, {
+    method: 'DELETE',
+  });
+};
+
+/**
+ * [FIXED] Mengubah endpoint menjadi '/santri/deduct-saldo/:id' agar sesuai dengan backend.
+ */
+export const deductSantriBalance = (id: string, amount: number, description: string) => {
+  return fetchAPI(`/santri/deduct-saldo/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ jumlah: amount, deskripsi: description }),
+  });
+};
+
+export const updateSantriBulk = (ids: number[], data: any) => {
+  return fetchAPI(`/santri/update-bulk?id=${ids.join(',')}`, {
+    method: 'PUT',
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${text}`);
-  }
-  return res.json();
 };
-
-
-// --- TAMBAHKAN FUNGSI BARU INI ---
-export const getWalsanList = () => {
-  // Pastikan URL-nya mengarah ke '/santri/walsan'
-  return fetchAPI('/santri/walsan'); 
-};// ------------------------------------
-
 
 export const deleteSantriBulk = (ids: number[]) => {
   return fetchAPI(`/santri/delete-bulk?id=${ids.join(',')}`, {
@@ -266,19 +124,72 @@ export const deleteSantriBulk = (ids: number[]) => {
   });
 };
 
-export const getNotifications = () => {
-  return fetchAPI('/notifications'); // Asumsi endpoint ini ada
+
+// =========================================
+//  FUNGSI ITEMS (STOK BARANG) & KATEGORI
+// =========================================
+interface ItemData {
+  nama: string;
+  harga: number;
+  jumlah: number;
+  kategori: string;
+  gambar?: string;
+}
+
+export const getAllItems = () => fetchAPI('/items');
+export const getAllKategori = () => fetchAPI('/kategori');
+
+export const createItem = (itemData: ItemData) => {
+  return fetchAPI('/items', {
+    method: 'POST',
+    body: JSON.stringify(itemData),
+  });
+};
+
+export const updateItem = (id: number, itemData: Partial<ItemData>) => {
+  return fetchAPI(`/items/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(itemData),
+  });
+};
+
+export const deleteItem = (id: number) => {
+  return fetchAPI(`/items/${id}`, {
+    method: 'DELETE',
+  });
 };
 
 
 // =========================================
-//         FUNGSI HISTORY & ITEMS
+//  FUNGSI HISTORY & TRANSAKSI
 // =========================================
+export const getSalesHistory = () => fetchAPI('/history');
+export const getHistoryBySantriId = (santriId: string) => fetchAPI(`/history/santri/${santriId}`);
+export const getSantriTransactions = (id: string) => fetchAPI(`/transaksi/santri/${id}`);
 
-export const getHistoryBySantriId = (santriId: string) => {
-  return fetchAPI(`/history/santri/${santriId}`);
+
+// =========================================
+//  FUNGSI TOP UP & NOTIFIKASI
+// =========================================
+export const createTopUpRequest = async (data: { santriId: string; amount: number; proof: File; }) => {
+    const formData = new FormData();
+    formData.append('santriId', data.santriId);
+    formData.append('amount', data.amount.toString());
+    formData.append('proof', data.proof);
+
+    const token = Cookies.get('accessToken');
+    const response = await fetch(`${API_BASE_URL}/topup/request`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal mengirim permintaan top-up.');
+    }
+    return response.json();
 };
 
-export const getAllItems = () => {
-  return fetchAPI('/items');
-};
+export const getTopUpHistory = (santriId: string) => fetchAPI(`/topup/history/${santriId}`);
+export const getNotifications = () => fetchAPI('/notifications');

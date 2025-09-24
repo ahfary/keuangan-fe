@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// ahfary/keuangan-fe/keuangan-fe-9fdda088837194e2c90d6e8c73ccf9d89b4a6f90/src/app/dashboard/admin/santri/[id]/page.tsx
+/* ahfary/keuangan-fe/keuangan-fe-9fdda088837194e2c90d6e8c73ccf9d89b4a6f90/src/app/dashboard/admin/santri/[id]/page.tsx */
 
 "use client";
 
@@ -18,10 +18,9 @@ import {
   X,
   SearchX,
   ChevronLeft, // Icon baru
-  ChevronRight, // Icon baru
-  // --- MODIFIKASI: Tambahkan ikon baru ---
-  Copy,
+  ChevronRight,
   Check,
+  Copy, // Icon baru
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -305,6 +304,7 @@ export default function SantriDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isGeneratingWalsan, setIsGeneratingWalsan] = useState(false);
 
   // --- STATE PAGINASI BARU ---
   const [currentPage, setCurrentPage] = useState(1);
@@ -315,37 +315,38 @@ export default function SantriDetailPage() {
     password?: string;
   } | null>(null);
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      if (!id) return;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [santriData, historyData, itemsData] = await Promise.all([
-          getSantriDetail(id),
-          getHistoryBySantriId(id),
-          getAllItems()
-        ]);
+  // --- Pindahkan fetchAllData ke luar useEffect agar bisa dipanggil ulang ---
+  const fetchAllData = async () => {
+    if (!id) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [santriData, historyData, itemsData] = await Promise.all([
+        getSantriDetail(id),
+        getHistoryBySantriId(id),
+        getAllItems()
+      ]);
 
-        const newItemsMap = new Map<number, Item>();
-        if (Array.isArray(itemsData)) {
-            itemsData.forEach((item: Item) => newItemsMap.set(item.id, item));
-        }
-
-        setSantri(santriData);
-        // Pastikan data diurutkan dari yang terbaru
-        const sortedHistory = Array.isArray(historyData) 
-            ? historyData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            : [];
-        setTransactions(sortedHistory);
-        setItemsMap(newItemsMap);
-
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+      const newItemsMap = new Map<number, Item>();
+      if (Array.isArray(itemsData)) {
+          itemsData.forEach((item: Item) => newItemsMap.set(item.id, item));
       }
-    };
+
+      setSantri(santriData);
+      const sortedHistory = Array.isArray(historyData) 
+          ? historyData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          : [];
+      setTransactions(sortedHistory);
+      setItemsMap(newItemsMap);
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAllData();
   }, [id]);
   
@@ -371,15 +372,43 @@ export default function SantriDetailPage() {
     const promise = updateSantriDetail(id, data);
     toast.promise(promise, {
       loading: "Menyimpan perubahan...",
-      success: (updatedSantri) => {
+      success: async (updatedSantri) => {
         setSantri((prev) => (prev ? { ...prev, ...updatedSantri } : null));
         setIsEditModalOpen(false);
+        // --- Tambahkan ini untuk refresh data ---
+        await fetchAllData();
         return "Data santri berhasil diperbarui!";
       },
       error: (err) => `Gagal memperbarui data: ${err.message}`,
     });
   };
   
+  // Handler untuk generate walsan
+  const handleGenerateWalsan = async () => {
+    if (!santri) return;
+    setIsGeneratingWalsan(true);
+    try {
+      const res = await generateWalsan(santri.id);
+      // Debug respons API
+      console.log("generateWalsan response:", res);
+
+      // Coba beberapa kemungkinan struktur respons
+      const email =
+        res?.data?.email ||
+        res?.data?.user?.email ||
+        res?.email ||
+        res?.user?.email ||
+        "tidak ada email";
+
+      setGeneratedWalsanCreds({ email, password: "smkmqbisa" });
+      setIsWalsanInfoModalOpen(true);
+    } catch (err: any) {
+      toast.error(`Gagal: ${err.message}`);
+    } finally {
+      setIsGeneratingWalsan(false);
+    }
+  };
+
   if (isLoading)
     return (
       <div className="flex justify-center items-center h-full pt-20">
@@ -439,19 +468,19 @@ export default function SantriDetailPage() {
             </Button>
             <Button
               variant="default"
-              onClick={() => {
-                if (!santri) return;
-                toast.promise(generateWalsan(santri.id), {
-                  loading: "Membuat akun walsan...",
-                  success: (res: any) => {
-                    const email = res?.data?.user?.email || "tidak ada email";
-                    return `✅ Akun walsan berhasil dibuat!\n\nEmail: ${email}\nPassword: smkmqbisa\n\nGunakan ini untuk login.`;
-                  },
-                  error: (err) => `Gagal: ${err.message}`,
-                });
-              }}
+              onClick={handleGenerateWalsan}
+              disabled={isGeneratingWalsan}
             >
-              Generate Akun Walsan
+              {isGeneratingWalsan ? (
+                <>
+                  <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
+                  Membuat...
+                </>
+              ) : (
+                <>
+                  Generate Akun Walsan
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -529,4 +558,4 @@ export default function SantriDetailPage() {
       />
     </>
   );
-} 
+}
