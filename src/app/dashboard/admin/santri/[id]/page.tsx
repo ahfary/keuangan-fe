@@ -296,7 +296,6 @@ const ITEMS_PER_PAGE = 4; // <-- Konstanta untuk limit item per halaman
 export default function SantriDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const router = useRouter();
 
   const [santri, setSantri] = useState<SantriDetail | null>(null);
   const [transactions, setTransactions] = useState<TransactionHistory[]>([]);
