@@ -101,10 +101,10 @@ export default function LaporanHarianPage() {
             onChange={(e) => setSelectedDate(e.target.value)}
             className="w-full md:w-auto"
           />
-          <Button variant="outline">
+          {/* <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
             Unduh Laporan
-          </Button>
+          </Button> */}
         </div>
       </div>
     </div>

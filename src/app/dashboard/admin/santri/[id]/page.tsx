@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// ahfary/keuangan-fe/keuangan-fe-9fdda088837194e2c90d6e8c73ccf9d89b4a6f90/src/app/dashboard/admin/santri/[id]/page.tsx
+
 "use client";
 
-import React, { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent, useMemo } from "react"; // Tambahkan useMemo
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -13,6 +16,8 @@ import {
   User,
   X,
   SearchX,
+  ChevronLeft, // Icon baru
+  ChevronRight, // Icon baru
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +26,12 @@ import {
   getSantriDetail,
   updateSantriDetail,
   generateWalsan,
+  getHistoryBySantriId,
+  getAllItems,
 } from "@/lib/api";
 import toast from "react-hot-toast";
 
-// --- Tipe Data ---
+// --- Tipe Data (TIDAK BERUBAH) ---
 interface SantriDetail {
   id: number;
   name: string;
@@ -32,76 +39,84 @@ interface SantriDetail {
   saldo: number;
   hutang?: number;
 }
-interface Transaction {
+interface Item {
+  id: number;
+  nama: string;
+  [key: string]: any;
+}
+interface HistoryItem {
+  itemId: number;
+  quantity: number;
+  priceAtPurchase: number;
+  item?: Item;
+}
+interface TransactionHistory {
   id: string;
-  description: string;
-  amount: number;
-  date: string;
-  type: "jajan" | "hutang" | "tarik_tunai";
+  totalAmount: number;
+  createdAt: string;
+  status: 'Lunas' | 'Hutang';
+  items: HistoryItem[];
 }
 interface SantriEditData {
   name: string;
   kelas: string;
 }
 
-// --- Komponen Tabs ---
-const Tabs = ({ tabs, activeTab, setActiveTab }: any) => (
-  <div className="border-b border-gray-200 dark:border-gray-700">
-    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-      {tabs.map((tab: any) => (
-        <button
-          key={tab.name}
-          onClick={() => setActiveTab(tab.name)}
-          className={`${
-            activeTab === tab.name
-              ? "border-indigo-500 text-indigo-600"
-              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-          } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-        >
-          {tab.name}
-        </button>
-      ))}
-    </nav>
-  </div>
-);
-
-// --- Komponen Daftar Transaksi ---
-const TransactionList = ({ transactions }: any) => (
+// --- Komponen TransactionList (TIDAK BERUBAH) ---
+const TransactionList = ({ transactions, itemsMap }: { transactions: TransactionHistory[], itemsMap: Map<number, Item> }) => (
   <div className="space-y-4 h-full overflow-y-auto pr-2">
     {transactions.length > 0 ? (
       transactions.map((tx) => (
         <div
           key={tx.id}
-          className="flex justify-between items-center border-b pb-2 dark:border-gray-700"
+          className="border-b pb-3 dark:border-gray-700"
         >
-          <div>
-            <p className="font-medium capitalize">{tx.description}</p>
-            <p className="text-xs text-gray-500">
-              {new Date(tx.date).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
+          <div className="flex justify-between items-center mb-2">
+            <div>
+              <p className="font-medium capitalize">{tx.status}</p>
+              <p className="text-xs text-gray-500">
+                {new Date(tx.createdAt).toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+            <p className="font-semibold text-red-600">
+              -
+              {new Intl.NumberFormat("id-ID", {
+                style: "currency",
+                currency: "IDR",
+              }).format(tx.totalAmount)}
             </p>
           </div>
-          <p className="font-semibold text-red-600">
-            -
-            {new Intl.NumberFormat("id-ID", {
-              style: "currency",
-              currency: "IDR",
-            }).format(tx.amount)}
-          </p>
+          <ul className="pl-4 text-sm">
+            {tx.items.map(item => {
+              const itemName = itemsMap.get(item.itemId)?.nama || `Item ID: ${item.itemId}`;
+              return (
+                <li key={`${tx.id}-${item.itemId}`} className="flex justify-between text-gray-600 dark:text-gray-400">
+                  <span>{itemName} (x{item.quantity})</span>
+                  <span>
+                    {new Intl.NumberFormat("id-ID", {
+                      style: "currency", currency: "IDR"
+                    }).format(item.priceAtPurchase * item.quantity)}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       ))
     ) : (
-      <p className="text-sm text-gray-500 text-center py-8">
-        Belum ada riwayat.
-      </p>
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        <History className="w-12 h-12 text-gray-400 mb-2"/>
+        <p className="text-gray-500">Belum ada riwayat transaksi.</p>
+      </div>
     )}
   </div>
 );
 
-// --- Komponen Modal Edit Santri ---
+// --- Komponen Modal Edit Santri (TIDAK BERUBAH) ---
 const EditSantriModal = ({
   santri,
   isOpen,
@@ -174,16 +189,21 @@ const EditSantriModal = ({
 };
 
 // --- Halaman Detail Santri ---
+const ITEMS_PER_PAGE = 4; // <-- Konstanta untuk limit item per halaman
+
 export default function SantriDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
   const [santri, setSantri] = useState<SantriDetail | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<TransactionHistory[]>([]);
+  const [itemsMap, setItemsMap] = useState<Map<number, Item>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("Riwayat Jajan");
+
+  // --- STATE PAGINASI BARU ---
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -191,41 +211,25 @@ export default function SantriDetailPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const token = localStorage.getItem("accessToken") || "";
-        const santriData = await getSantriDetail(id, token);
-        // Data dummy
-        const transactionData = [
-          {
-            id: "1",
-            description: "Nasi Goreng",
-            amount: 15000,
-            date: "2025-08-10",
-            type: "jajan",
-          },
-          {
-            id: "2",
-            description: "Bayar Utang Buku",
-            amount: 50000,
-            date: "2025-08-09",
-            type: "hutang",
-          },
-          {
-            id: "3",
-            description: "Tarik Tunai",
-            amount: 100000,
-            date: "2025-08-08",
-            type: "tarik_tunai",
-          },
-          {
-            id: "4",
-            description: "Es Teh Manis",
-            amount: 4000,
-            date: "2025-08-10",
-            type: "jajan",
-          },
-        ];
+        const [santriData, historyData, itemsData] = await Promise.all([
+          getSantriDetail(id),
+          getHistoryBySantriId(id),
+          getAllItems()
+        ]);
+
+        const newItemsMap = new Map<number, Item>();
+        if (Array.isArray(itemsData)) {
+            itemsData.forEach((item: Item) => newItemsMap.set(item.id, item));
+        }
+
         setSantri(santriData);
-        setTransactions(transactionData);
+        // Pastikan data diurutkan dari yang terbaru
+        const sortedHistory = Array.isArray(historyData) 
+            ? historyData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            : [];
+        setTransactions(sortedHistory);
+        setItemsMap(newItemsMap);
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -234,11 +238,27 @@ export default function SantriDetailPage() {
     };
     fetchAllData();
   }, [id]);
+  
+  // --- LOGIKA PAGINASI ---
+  const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
+
+  // Gunakan useMemo agar data tidak dihitung ulang setiap render
+  const paginatedTransactions = useMemo(() => {
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      return transactions.slice(startIndex, endIndex);
+  }, [transactions, currentPage]);
+  
+  const handleNextPage = () => {
+      setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+  };
+  const handlePrevPage = () => {
+      setCurrentPage((prev) => Math.max(prev - 1, 1));
+  };
 
   const handleUpdateSantri = async (data: SantriEditData) => {
     if (!santri) return;
-    const token = localStorage.getItem("accessToken") || "";
-    const promise = updateSantriDetail(id, data, token);
+    const promise = updateSantriDetail(id, data);
     toast.promise(promise, {
       loading: "Menyimpan perubahan...",
       success: (updatedSantri) => {
@@ -249,7 +269,7 @@ export default function SantriDetailPage() {
       error: (err) => `Gagal memperbarui data: ${err.message}`,
     });
   };
-
+  
   if (isLoading)
     return (
       <div className="flex justify-center items-center h-full pt-20">
@@ -262,7 +282,7 @@ export default function SantriDetailPage() {
         <SearchX className="w-16 h-16 text-red-500 mb-4" />
         <h2 className="text-2xl font-bold">Gagal Memuat Data</h2>
         <p className="text-gray-500 mt-2">{error}</p>
-        <Link href="/dashboard/santri" className="mt-6 inline-block">
+        <Link href="/dashboard/admin/santri" className="mt-6 inline-block">
           <Button>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Kembali
@@ -272,18 +292,6 @@ export default function SantriDetailPage() {
     );
   if (!santri) return <div className="text-center pt-20">Data santri tidak ditemukan.</div>;
 
-  const filteredTransactions = transactions.filter((tx) => {
-    if (activeTab === "Riwayat Jajan") return tx.type === "jajan";
-    if (activeTab === "Riwayat Hutang") return tx.type === "hutang";
-    if (activeTab === "Riwayat Tarik Tunai") return tx.type === "tarik_tunai";
-    return false;
-  });
-
-  const tabs = [
-    { name: "Riwayat Jajan" },
-    { name: "Riwayat Hutang" },
-    { name: "Riwayat Tarik Tunai" },
-  ];
 
   return (
     <>
@@ -298,7 +306,7 @@ export default function SantriDetailPage() {
           </Link>
         </div>
 
-        {/* --- Kartu Profil Santri --- */}
+        {/* --- Kartu Profil Santri (TIDAK BERUBAH) --- */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center justify-between flex-shrink-0">
           <div className="flex items-center">
             <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mr-6">
@@ -313,31 +321,27 @@ export default function SantriDetailPage() {
               </p>
             </div>
           </div>
-
-          {/* Tombol aksi */}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setIsEditModalOpen(true)}>
               <Edit className="w-4 h-4 mr-2" />
               Edit Data
             </Button>
-        <Button
-          variant="default"
-          onClick={() => {
-            if (!santri) return;
-            const token = localStorage.getItem("accessToken") || "";
-
-            toast.promise(generateWalsan(santri.id, token), {
-              loading: "Membuat akun walsan...",
-              success: (res: any) => {
-                const email = res?.data?.user?.email || "tidak ada email";
-                return `✅ Akun walsan berhasil dibuat!\n\nEmail: ${email}\nPassword: smkmqbisa\n\nGunakan ini untuk login.`;
-              },
-              error: (err) => `Gagal: ${err.message}`,
-            });
-          }}
-        >
-          Generate Akun Walsan
-        </Button>
+            <Button
+              variant="default"
+              onClick={() => {
+                if (!santri) return;
+                toast.promise(generateWalsan(santri.id), {
+                  loading: "Membuat akun walsan...",
+                  success: (res: any) => {
+                    const email = res?.data?.user?.email || "tidak ada email";
+                    return `✅ Akun walsan berhasil dibuat!\n\nEmail: ${email}\nPassword: smkmqbisa\n\nGunakan ini untuk login.`;
+                  },
+                  error: (err) => `Gagal: ${err.message}`,
+                });
+              }}
+            >
+              Generate Akun Walsan
+            </Button>
           </div>
         </div>
 
@@ -371,15 +375,28 @@ export default function SantriDetailPage() {
           </div>
 
           <div className="md:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-col">
-            <h2 className="text-xl font-semibold mb-4 flex items-center flex-shrink-0">
-              <History className="w-5 h-5 mr-3" />
-              Riwayat Transaksi
-            </h2>
-            <div className="flex-shrink-0">
-              <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
+                <h2 className="text-xl font-semibold flex items-center">
+                  <History className="w-5 h-5 mr-3" />
+                  Riwayat Transaksi
+                </h2>
+                {/* --- KONTROL PAGINASI BARU --- */}
+                {totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={handlePrevPage} disabled={currentPage === 1}>
+                            <ChevronLeft className="h-4 w-4"/>
+                        </Button>
+                        <span className="text-sm font-medium">
+                            {currentPage} / {totalPages}
+                        </span>
+                        <Button variant="outline" size="icon" onClick={handleNextPage} disabled={currentPage === totalPages}>
+                            <ChevronRight className="h-4 w-4"/>
+                        </Button>
+                    </div>
+                )}
             </div>
-            <div className="mt-4 flex-1 overflow-hidden">
-              <TransactionList transactions={filteredTransactions} />
+            <div className="flex-1 overflow-hidden">
+              <TransactionList transactions={paginatedTransactions} itemsMap={itemsMap} />
             </div>
           </div>
         </div>

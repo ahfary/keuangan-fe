@@ -30,7 +30,7 @@ export default function PendapatanPage() {
       </div>
 
       {/* Grid untuk Kartu Statistik */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      {/* <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Pendapatan Hari Ini</p>
@@ -58,10 +58,10 @@ export default function PendapatanPage() {
             {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.thisMonth)}
           </p>
         </div>
-      </div>
+      </div> */}
 
       {/* Grafik Pendapatan */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+      {/* <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">Grafik Pendapatan Mingguan</h2>
         <div style={{ width: '100%', height: 350 }}>
           <ResponsiveContainer>
@@ -73,7 +73,7 @@ export default function PendapatanPage() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

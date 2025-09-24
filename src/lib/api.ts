@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Cookies from 'js-cookie';
 
 // 1. Konfigurasi dasar
@@ -148,24 +149,49 @@ export const getSalesHistory = () => {
   return fetchAPI('/history');
 };
 
-export const createItem = (itemData: ItemData) => {
-  return fetchAPI('/items', {
-    method: 'POST',
-    body: JSON.stringify(itemData),
-  });
+// export const createItem = (itemData: ItemData) => {
+//   return fetchAPI('/items', {
+//     method: 'POST',
+//     body: JSON.stringify(itemData),
+//   });
+// };
+
+// export const updateItem = (id: number, itemData: Partial<ItemData>) => {
+//   return fetchAPI(`/items/${id}`, {
+//     method: 'PATCH',
+//     body: JSON.stringify(itemData),
+//   });
+// };
+
+// export const deleteItem = (id: number) => {
+//   return fetchAPI(`/items/${id}`, {
+//     method: 'DELETE',
+//   });
+// };
+
+// =========================================
+//         FUNGSI KATEGORI & ITEMS (CRUD)
+// =========================================
+
+/**
+ * Mengambil semua data kategori.
+ * @returns {Promise<any>} - Daftar semua kategori
+ */
+export const getAllKategori = () => {
+    return fetchAPI('/kategori');
 };
 
-export const updateItem = (id: number, itemData: Partial<ItemData>) => {
-  return fetchAPI(`/items/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(itemData),
-  });
+
+export const createItem = (itemData: any) => {
+    return fetchAPI('/items', itemData);
 };
 
-export const deleteItem = (id: number) => {
-  return fetchAPI(`/items/${id}`, {
-    method: 'DELETE',
-  });
+export const updateItem = (id: number | string, itemData: any) => {
+    return fetchAPI(`/items/${id}`, itemData);
+};
+
+export const deleteItem = (id: number | string) => {
+    return fetchAPI(`/items/${id}`);
 };
 
 export const createTopUpRequest = async (data: { santriId: string; amount: number; proof: File; }) => {
@@ -236,6 +262,15 @@ export const getNotifications = () => {
   return fetchAPI('/notifications'); // Asumsi endpoint ini ada
 };
 
-export const getHistoryBySantriId = () => {
-  return fetchAPI('/history/santri/:id');
-}
+
+// =========================================
+//         FUNGSI HISTORY & ITEMS
+// =========================================
+
+export const getHistoryBySantriId = (santriId: string) => {
+  return fetchAPI(`/history/santri/${santriId}`);
+};
+
+export const getAllItems = () => {
+  return fetchAPI('/items');
+};
