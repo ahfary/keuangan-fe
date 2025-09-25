@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* ahfary/keuangan-fe/keuangan-fe-9fdda088837194e2c90d6e8c73ccf9d89b4a6f90/src/app/dashboard/admin/santri/[id]/page.tsx */
 

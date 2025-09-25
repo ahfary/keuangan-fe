@@ -1,25 +1,6 @@
 "use client"; // Diperlukan untuk komponen grafik (recharts)
 
 import React from 'react';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
-import { DollarSign, ShoppingBag, Users } from "lucide-react";
-
-// Data tiruan untuk statistik dan grafik
-const stats = {
-  today: 1250000,
-  thisWeek: 7800000,
-  thisMonth: 31200000,
-};
-
-const chartData = [
-  { date: "Senin", total: 1100000 },
-  { date: "Selasa", total: 1350000 },
-  { date: "Rabu", total: 950000 },
-  { date: "Kamis", total: 1500000 },
-  { date: "Jumat", total: 1800000 },
-  { date: "Sabtu", total: 650000 },
-  { date: "Minggu", total: 450000 },
-];
 
 export default function PendapatanPage() {
   return (

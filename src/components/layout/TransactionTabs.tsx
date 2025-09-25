@@ -19,7 +19,7 @@
             {["Transfer", "Stock", "Piutang"].map((tab) => (
             <button
                 key={tab}
-                onClick={() => setActiveTab(tab as any)}
+                onClick={() => setActiveTab(tab as never)}
                 className={`px-8 py-2 rounded-md border border-[#513CFA] ${
                 activeTab === tab
                     ? "bg-[#513CFA] text-white"
