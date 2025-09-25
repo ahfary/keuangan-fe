@@ -368,20 +368,21 @@ export default function SantriDetailPage() {
   };
 
   const handleUpdateSantri = async (data: SantriEditData) => {
-    if (!santri) return;
-    const promise = updateSantriDetail(id, data);
-    toast.promise(promise, {
-      loading: "Menyimpan perubahan...",
-      success: async (updatedSantri) => {
-        setSantri((prev) => (prev ? { ...prev, ...updatedSantri } : null));
-        setIsEditModalOpen(false);
-        // --- Tambahkan ini untuk refresh data ---
-        await fetchAllData();
-        return "Data santri berhasil diperbarui!";
-      },
-      error: (err) => `Gagal memperbarui data: ${err.message}`,
-    });
-  };
+  if (!santri) return;
+  const promise = updateSantriDetail(id, data).then(async (updatedSantri) => {
+    setSantri((prev) => (prev ? { ...prev, ...updatedSantri } : null));
+    setIsEditModalOpen(false);
+    await fetchAllData();
+    return updatedSantri;
+  });
+
+  toast.promise(promise, {
+    loading: "Menyimpan perubahan...",
+    success: () => "Data santri berhasil diperbarui!",
+    error: (err) => `Gagal memperbarui data: ${err.message}`,
+  });
+};
+
   
   // Handler untuk generate walsan
   const handleGenerateWalsan = async () => {
