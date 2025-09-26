@@ -4,6 +4,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Bell, LoaderCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import { cn } from "@/lib/utils";
 
 // Tipe data untuk notifikasi
 interface Notification {

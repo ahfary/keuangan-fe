@@ -120,12 +120,6 @@ export default function ManajemenHutangPage() {
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Manajemen Hutang Santri</h1>
           <p className="mt-1 text-gray-600 dark:text-gray-400">Cek, filter, dan kelola data hutang santri.</p>
         </div>
-        <div className="flex gap-2">
-           <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Tambah Santri Hutang
-           </Button>
-        </div>
       </div>
 
       {/* --- Panel Pencarian dan Filter --- */}
