@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, FormEvent, useMemo } from "react";
+import React, { useState, useEffect, FormEvent, useMemo, useRef } from "react";
 import Image from "next/image";
 import {
   PlusCircle,
@@ -14,11 +14,12 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  UploadCloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getItems, createItem, updateItem, deleteItem } from "@/lib/api";
+import { getItems, createItem, updateItem, deleteItem, getAllKategori } from "@/lib/api";
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -39,18 +40,21 @@ interface Item {
   gambar?: string | null;
 }
 
+// Tipe untuk data form, termasuk file gambar yang mungkin ada
 interface ItemFormData {
   id?: number;
   nama: string;
   harga: string;
   jumlah: string;
-  kategori: string;
+  kategoriId: string;
+  gambarFile?: File | null; // Diganti agar tidak bentrok dengan `gambar` string dari item
+  gambarUrl?: string | null; // Untuk menyimpan URL gambar yang sudah ada
 }
 
 const MySwal = withReactContent(Swal);
-const ITEMS_PER_PAGE = 8; // Disesuaikan untuk tampilan grid (4x2) dan tabel
+const ITEMS_PER_PAGE = 8;
 
-// --- Komponen-Komponen Tampilan ---
+// --- Komponen Tampilan (Tidak Ada Perubahan) ---
 
 const TableView = ({
   items,
@@ -207,41 +211,92 @@ const GridView = ({
   </div>
 );
 
+// --- [PERBAIKAN] Komponen Modal Form ---
 const ItemFormModal = ({
   isOpen,
   onClose,
   onSave,
   itemData,
+  kategoriList,
+  isSaving,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ItemFormData) => void;
   itemData: ItemFormData | null;
+  kategoriList: Kategori[];
+  isSaving: boolean;
 }) => {
   const [formData, setFormData] = useState<ItemFormData>({
     nama: "",
     harga: "",
     jumlah: "",
-    kategori: "",
+    kategoriId: "",
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const modalTitle = itemData ? "Edit Data Barang" : "Tambah Barang Baru";
+  const isCreating = !itemData; // Tentukan apakah ini mode create atau update
 
   useEffect(() => {
-    if (itemData) setFormData(itemData);
-    else setFormData({ nama: "", harga: "", jumlah: "", kategori: "" });
+    if (isOpen) {
+      if (itemData) {
+        setFormData(itemData);
+        setImagePreview(itemData.gambarUrl || null);
+      } else {
+        setFormData({
+          nama: "",
+          harga: "",
+          jumlah: "",
+          kategoriId: "",
+          gambarFile: null,
+          gambarUrl: null,
+        });
+        setImagePreview(null);
+      }
+    }
   }, [itemData, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFormData((prev) => ({ ...prev, gambarFile: file }));
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    // --- [PERBAIKAN] Validasi input ---
+    if (!formData.nama || !formData.harga || !formData.jumlah || !formData.kategoriId) {
+      toast.error("Semua kolom wajib diisi.");
+      return;
+    }
+    // Validasi gambar hanya saat membuat item baru
+    if (isCreating && !formData.gambarFile) {
+      toast.error("Gambar barang wajib diunggah.");
+      return;
+    }
     onSave(formData);
   };
+  
+  // Helper untuk menambahkan tanda bintang jika field wajib diisi
+  const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
+    <Label>
+        {children} <span className="text-red-500">*</span>
+    </Label>
+  );
 
   return (
     <div
@@ -249,7 +304,7 @@ const ItemFormModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center border-b pb-3 mb-4 dark:border-gray-600">
@@ -260,46 +315,90 @@ const ItemFormModal = ({
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="nama">Nama Barang</Label>
+            {/* [PERBAIKAN] Label dibuat dinamis */}
+            <Label>
+                Gambar Barang {isCreating && <span className="text-red-500">*</span>}
+            </Label>
+            <div
+              className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <div className="space-y-1 text-center">
+                {imagePreview ? (
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    width={150}
+                    height={150}
+                    className="mx-auto h-24 w-auto object-contain rounded"
+                  />
+                ) : (
+                  <UploadCloud className="mx-auto h-12 w-12 text-gray-400" />
+                )}
+                <div className="flex text-sm text-gray-600 dark:text-gray-400">
+                  <p className="pl-1">
+                    {imagePreview ? "Ganti gambar" : "Upload file"} atau tarik dan lepas
+                  </p>
+                </div>
+                <p className="text-xs text-gray-500">PNG, JPG, GIF hingga 10MB</p>
+              </div>
+            </div>
+            <Input
+              id="gambarFile"
+              name="gambarFile"
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleFileChange}
+              accept="image/*"
+            />
+          </div>
+
+          <div>
+            <RequiredLabel>Nama Barang</RequiredLabel>
             <Input
               id="nama"
               name="nama"
               value={formData.nama}
               onChange={handleChange}
-              required
             />
           </div>
           <div>
-            <Label htmlFor="kategori">Kategori</Label>
-            <Input
-              id="kategori"
-              name="kategori"
-              value={formData.kategori}
+            <RequiredLabel>Kategori</RequiredLabel>
+            <select
+              id="kategoriId"
+              name="kategoriId"
+              value={formData.kategoriId}
               onChange={handleChange}
-              required
-            />
+              className="mt-1 block w-full pl-3 pr-4 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+            >
+              <option value="">Pilih Kategori</option>
+              {kategoriList.map((kat) => (
+                <option key={kat.id} value={kat.id}>
+                  {kat.nama}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="jumlah">Jumlah (Stok)</Label>
+              <RequiredLabel>Jumlah (Stok)</RequiredLabel>
               <Input
                 id="jumlah"
                 name="jumlah"
                 type="number"
                 value={formData.jumlah}
                 onChange={handleChange}
-                required
               />
             </div>
             <div>
-              <Label htmlFor="harga">Harga Jual (Rp)</Label>
+              <RequiredLabel>Harga Jual (Rp)</RequiredLabel>
               <Input
                 id="harga"
                 name="harga"
                 type="number"
                 value={formData.harga}
                 onChange={handleChange}
-                required
               />
             </div>
           </div>
@@ -307,7 +406,10 @@ const ItemFormModal = ({
             <Button type="button" variant="secondary" onClick={onClose}>
               Batal
             </Button>
-            <Button type="submit">Simpan</Button>
+            <Button type="submit" disabled={isSaving}>
+              {isSaving && <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />}
+              {isSaving ? "Menyimpan..." : "Simpan"}
+            </Button>
           </div>
         </form>
       </div>
@@ -315,23 +417,27 @@ const ItemFormModal = ({
   );
 };
 
-// --- Komponen Halaman Utama ---
+
+// --- Komponen Halaman Utama (Tidak ada perubahan logika) ---
 export default function StokPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [kategori, setKategori] = useState<Kategori[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemFormData | null>(null);
   const [view, setView] = useState<"grid" | "table">("grid");
+  const [isSaving, setIsSaving] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const fetchItems = async () => {
+  const fetchItemsAndKategori = async () => {
     setIsLoading(true);
     try {
-      const data = await getItems();
+      const [data, kategoriData] = await Promise.all([getItems(), getAllKategori()]);
       setItems(Array.isArray(data) ? data : []);
+      setKategori(Array.isArray(kategoriData) ? kategoriData : []);
     } catch (error: any) {
       toast.error(`Gagal memuat data: ${error.message}`);
       setItems([]);
@@ -341,7 +447,7 @@ export default function StokPage() {
   };
 
   useEffect(() => {
-    fetchItems();
+    fetchItemsAndKategori();
   }, []);
 
   useEffect(() => {
@@ -385,63 +491,29 @@ export default function StokPage() {
 
   const PaginationControls = ({ isTable = false }: { isTable?: boolean }) => {
     if (totalPages <= 1) return null;
-
-    if (isTable) {
-      return (
-        <div className="p-4 flex justify-center">
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                size="sm"
-                variant={currentPage === page ? "default" : "outline"}
-                onClick={() => handlePageChange(page)}
-              >
-                {page}
-              </Button>
-            ))}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      );
-    }
-
     return (
-      <div className="flex justify-center items-center gap-2 mt-6">
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handlePageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <span className="text-sm">
-          Halaman {currentPage} dari {totalPages}
-        </span>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => handlePageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+      <div className={cn("flex justify-center items-center gap-2", isTable ? "p-4" : "mt-6")}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {!isTable && "Sebelumnya"}
+          </Button>
+          <span className="text-sm">
+            Halaman {currentPage} dari {totalPages}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            {!isTable && "Berikutnya"}
+            <ChevronRight className="w-4 h-4" />
+          </Button>
       </div>
     );
   };
@@ -449,10 +521,12 @@ export default function StokPage() {
   const handleOpenModal = (item: Item | null = null) => {
     if (item) {
       setEditingItem({
-        ...item,
+        id: item.id,
+        nama: item.nama,
         harga: String(item.harga),
         jumlah: String(item.jumlah),
-        kategori: item.kategori?.nama || "",
+        kategoriId: String(item.kategori?.id || ""),
+        gambarUrl: item.gambar,
       });
     } else {
       setEditingItem(null);
@@ -461,29 +535,37 @@ export default function StokPage() {
   };
 
   const handleSaveItem = async (formData: ItemFormData) => {
-    const itemPayload = {
-      nama: formData.nama,
-      kategori: formData.kategori,
-      harga: parseInt(formData.harga, 10),
-      jumlah: parseInt(formData.jumlah, 10),
-    };
-    let promise;
-    if (formData.id) {
-      promise = updateItem(formData.id, itemPayload);
-    } else {
-      promise = createItem(itemPayload);
+    setIsSaving(true);
+    try {
+        const data = new FormData();
+        data.append('nama', formData.nama);
+        data.append('harga', formData.harga);
+        data.append('jumlah', formData.jumlah);
+        data.append('kategoriId', formData.kategoriId);
+        if (formData.gambarFile) {
+            data.append('gambar', formData.gambarFile);
+        }
+
+        const isUpdating = !!formData.id;
+        const promise = isUpdating
+            ? updateItem(formData.id!, data)
+            : createItem(data);
+
+        await toast.promise(promise, {
+            loading: "Menyimpan data barang...",
+            success: (result) => {
+                setIsModalOpen(false);
+                fetchItemsAndKategori();
+                return isUpdating
+                    ? "Barang berhasil diperbarui!"
+                    : "Barang baru berhasil ditambahkan!";
+            },
+            error: (err) => `Gagal: ${err.message}`,
+        });
+    } catch (error) {
+    } finally {
+        setIsSaving(false);
     }
-    toast.promise(promise, {
-      loading: "Menyimpan data barang...",
-      success: () => {
-        setIsModalOpen(false);
-        fetchItems();
-        return formData.id
-          ? "Barang berhasil diperbarui!"
-          : "Barang baru berhasil ditambahkan!";
-      },
-      error: (err) => `Gagal: ${err.message}`,
-    });
   };
 
   const handleDeleteItem = (item: Item) => {
@@ -497,30 +579,23 @@ export default function StokPage() {
       confirmButtonText: "Ya, Hapus!",
       cancelButtonText: "Batal",
       customClass: {
-        // Jika menggunakan dark mode, ini membantu agar popup tetap terlihat
         popup: "bg-white dark:bg-gray-800",
         title: "text-gray-900 dark:text-white",
         htmlContainer: "text-gray-600 dark:text-gray-300",
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        // Jika user menekan tombol "Ya, Hapus!"
         const promise = deleteItem(item.id);
 
         toast.promise(promise, {
           loading: "Menghapus barang...",
           success: () => {
-            // Hapus item dari state untuk memperbarui UI secara langsung
-            setItems((prevItems) => prevItems.filter((i) => i.id !== item.id));
-
-            // Tampilkan popup sukses setelah berhasil
+            fetchItemsAndKategori();
             MySwal.fire(
               "Berhasil Dihapus!",
               `Barang '${item.nama}' telah dihapus.`,
               "success"
             );
-
-            // Kita tidak perlu return message lagi di sini karena sudah ditangani Swal
             return `Barang '${item.nama}' berhasil dihapus.`;
           },
           error: (err) => `Gagal menghapus: ${err.message}`,
@@ -622,6 +697,8 @@ export default function StokPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveItem}
         itemData={editingItem}
+        kategoriList={kategori}
+        isSaving={isSaving}
       />
     </div>
   );

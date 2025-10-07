@@ -133,29 +133,55 @@ interface ItemData {
   nama: string;
   harga: number;
   jumlah: number;
-  kategori: string;
-  gambar?: string;
+  kategoriId: string;
+  gambar?: File;
 }
 
 export const getAllItems = () => fetchAPI('/items');
 export const getAllKategori = () => fetchAPI('/kategori');
 
-export const createItem = (itemData: ItemData) => {
-  return fetchAPI('/items', {
+export const createItem = async (itemData: FormData) => {
+  const token = Cookies.get('accessToken');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/items/create`, {
     method: 'POST',
-    body: JSON.stringify(itemData),
+    headers,
+    body: itemData,
   });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData.message || 'Gagal menambahkan barang.');
+  }
+  return responseData.data || responseData;
 };
 
-export const updateItem = (id: number, itemData: Partial<ItemData>) => {
-  return fetchAPI(`/items/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(itemData),
+export const updateItem = async (id: number, itemData: FormData) => {
+  const token = Cookies.get('accessToken');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/items/update/${id}`, {
+    method: 'PUT',
+    headers,
+    body: itemData,
   });
+
+  const responseData = await response.json();
+  if (!response.ok) {
+    throw new Error(responseData.message || 'Gagal memperbarui barang.');
+  }
+  return responseData.data || responseData;
 };
 
 export const deleteItem = (id: number) => {
-  return fetchAPI(`/items/${id}`, {
+  return fetchAPI(`/items/delete/${id}`, {
     method: 'DELETE',
   });
 };
