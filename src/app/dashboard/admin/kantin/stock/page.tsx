@@ -500,7 +500,7 @@ export default function StokPage() {
             disabled={currentPage === 1}
           >
             <ChevronLeft className="w-4 h-4" />
-            {!isTable && "Sebelumnya"}
+            {!isTable && ""}
           </Button>
           <span className="text-sm">
             Halaman {currentPage} dari {totalPages}
@@ -511,7 +511,7 @@ export default function StokPage() {
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
-            {!isTable && "Berikutnya"}
+            {!isTable && ""}
             <ChevronRight className="w-4 h-4" />
           </Button>
       </div>

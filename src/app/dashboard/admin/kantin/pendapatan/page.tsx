@@ -1,35 +1,34 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { DollarSign, ShoppingCart, Users, ChevronDown, LoaderCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+// [FIX] Menambahkan Banknote ke daftar import
+import { DollarSign, ShoppingCart, Banknote, LoaderCircle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
 import { getSalesHistory } from '@/lib/api';
+import Link from 'next/link';
 
 // --- Tipe Data ---
 interface Sale {
+  id: number;
   createdAt: string;
   totalAmount: number;
+  status: 'Lunas' | 'Hutang';
 }
 
-interface DailyRevenue {
+interface DailyData {
   date: string;
+  lunas: number;
+  hutang: number;
   total: number;
+  transaksi: number;
 }
 
-interface Stats {
-  today: number;
-  thisWeek: number;
-  thisMonth: number;
-}
+type StatusFilter = 'semua' | 'lunas' | 'hutang';
+const ITEMS_PER_PAGE = 5;
 
-type TimeRange = '7days' | '1month' | '6months';
-
-// --- Komponen-komponen Lokal ---
-
-// Kartu Statistik
+// --- Komponen Lokal ---
 const StatCard = ({ title, value, icon, isLoading }: { title: string; value: string; icon: React.ReactNode, isLoading: boolean }) => (
   <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
     <div className="flex items-center justify-between">
@@ -46,36 +45,19 @@ const StatCard = ({ title, value, icon, isLoading }: { title: string; value: str
   </div>
 );
 
-// Tooltip kustom untuk grafik
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="p-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg">
-        <p className="label font-semibold text-gray-800 dark:text-white">{label}</p>
-        <p className="intro text-indigo-500">{`Pendapatan: ${new Intl.NumberFormat('id-ID', {
-          style: 'currency',
-          currency: 'IDR',
-        }).format(payload[0].value)}`}</p>
-      </div>
-    );
-  }
-  return null;
-};
-
-// --- Komponen Halaman Utama ---
-
+// --- Komponen Utama ---
 export default function PendapatanPage() {
   const [sales, setSales] = useState<Sale[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<TimeRange>('7days');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
+  const [currentPage, setCurrentPage] = useState(1);
+  const router = useRouter();
 
-  // Fetch data penjualan dari API
   useEffect(() => {
     const fetchSales = async () => {
       setIsLoading(true);
       try {
         const salesHistory = await getSalesHistory();
-        // Pastikan data adalah array dan urutkan dari yang terbaru
         const sortedSales = Array.isArray(salesHistory)
           ? salesHistory.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
           : [];
@@ -89,178 +71,145 @@ export default function PendapatanPage() {
     };
     fetchSales();
   }, []);
-
-  // Proses data untuk statistik dan grafik
-  const { stats, chartData, tableData } = React.useMemo(() => {
-    const now = new Date();
-    const today = new Date(now.setHours(0, 0, 0, 0));
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-    let todayRevenue = 0;
-    let thisWeekRevenue = 0;
-    let thisMonthRevenue = 0;
-    const dailyTotals: { [key: string]: number } = {};
-
+  
+  const { stats, tableData } = useMemo(() => {
+    const dailyTotals: { [key: string]: { lunas: number; hutang: number; transaksi: number } } = {};
+    
     for (const sale of sales) {
-      const saleDate = new Date(sale.createdAt);
-      saleDate.setHours(0, 0, 0, 0);
+      const localDate = new Date(sale.createdAt);
+      const dateString = localDate.toISOString().split('T')[0];
 
-      // Kalkulasi statistik
-      if (saleDate.getTime() === today.getTime()) {
-        todayRevenue += sale.totalAmount;
-      }
-      if (saleDate >= startOfWeek) {
-        thisWeekRevenue += sale.totalAmount;
-      }
-      if (saleDate >= startOfMonth) {
-        thisMonthRevenue += sale.totalAmount;
-      }
-
-      // Agregasi data harian untuk tabel dan grafik
-      const dateString = saleDate.toISOString().split('T')[0];
       if (!dailyTotals[dateString]) {
-        dailyTotals[dateString] = 0;
+        dailyTotals[dateString] = { lunas: 0, hutang: 0, transaksi: 0 };
       }
-      dailyTotals[dateString] += sale.totalAmount;
+      
+      dailyTotals[dateString].transaksi++;
+      if (sale.status === 'Lunas') {
+        dailyTotals[dateString].lunas += sale.totalAmount;
+      } else {
+        dailyTotals[dateString].hutang += sale.totalAmount;
+      }
     }
     
-    const processedTableData: DailyRevenue[] = Object.entries(dailyTotals).map(([date, total]) => ({ date, total }));
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const startOfWeek = new Date();
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Filter data untuk grafik berdasarkan timeRange
-    const getChartData = (range: TimeRange): DailyRevenue[] => {
-      const endDate = new Date();
-      const startDate = new Date();
+    const todayRevenue = dailyTotals[todayStr]?.lunas || 0;
+    let thisWeekRevenue = 0;
+    let thisMonthRevenue = 0;
 
-      if (range === '7days') {
-        startDate.setDate(endDate.getDate() - 7);
-      } else if (range === '1month') {
-        startDate.setMonth(endDate.getMonth() - 1);
-      } else if (range === '6months') {
-        startDate.setMonth(endDate.getMonth() - 6);
-      }
+    Object.entries(dailyTotals).forEach(([dateStr, data]) => {
+        const date = new Date(dateStr);
+        if (date >= startOfWeek) thisWeekRevenue += data.lunas;
+        if (date >= startOfMonth) thisMonthRevenue += data.lunas;
+    });
 
-      return processedTableData
-        .filter(d => new Date(d.date) >= startDate && new Date(d.date) <= endDate)
-        .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .map(d => ({
-          date: new Date(d.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }),
-          total: d.total
-        }));
-    };
+    const processedTableData: DailyData[] = Object.entries(dailyTotals).map(([date, data]) => ({ 
+      date, 
+      ...data,
+      total: data.lunas + data.hutang,
+    }));
+
+    const filteredTableData = processedTableData.filter(data => {
+        if (statusFilter === 'lunas') return data.lunas > 0;
+        if (statusFilter === 'hutang') return data.hutang > 0;
+        return true;
+    });
 
     return {
       stats: { today: todayRevenue, thisWeek: thisWeekRevenue, thisMonth: thisMonthRevenue },
-      chartData: getChartData(timeRange),
-      tableData: processedTableData
+      tableData: filteredTableData,
     };
-  }, [sales, timeRange]);
+  }, [sales, statusFilter]);
+  
+  const totalPages = Math.ceil(tableData.length / ITEMS_PER_PAGE);
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return tableData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [tableData, currentPage]);
+
+
+  const handleDetailClick = (date: string) => {
+    router.push(`/dashboard/admin/kantin/laporan-harian?tanggal=${date}`);
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
+        <Link href="/dashboard/admin/kantin" className="inline-flex items-center text-sm text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 mb-2">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali ke Menu Kantin
+        </Link>
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Rekapitulasi Pendapatan</h1>
-        <p className="mt-1 text-gray-600 dark:text-gray-400">Analisis pendapatan kantin secara periodik.</p>
+        <p className="mt-1 text-gray-600 dark:text-gray-400">Analisis pendapatan lunas dan piutang (kasbon) dari kantin.</p>
       </div>
 
-      {/* Grid untuk Kartu Statistik */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <StatCard 
-          title="Pendapatan Hari Ini" 
-          value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.today)} 
-          icon={<DollarSign className="w-6 h-6 text-green-500" />}
-          isLoading={isLoading}
-        />
-        <StatCard 
-          title="Pendapatan Minggu Ini" 
-          value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.thisWeek)}
-          icon={<ShoppingCart className="w-6 h-6 text-blue-500" />}
-          isLoading={isLoading}
-        />
-        <StatCard 
-          title="Pendapatan Bulan Ini" 
-          value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.thisMonth)}
-          icon={<Users className="w-6 h-6 text-indigo-500" />}
-          isLoading={isLoading}
-        />
+        <StatCard title="Pendapatan Lunas (Hari Ini)" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.today)} icon={<DollarSign className="w-6 h-6 text-green-500" />} isLoading={isLoading}/>
+        <StatCard title="Pendapatan Lunas (Minggu Ini)" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.thisWeek)} icon={<ShoppingCart className="w-6 h-6 text-blue-500" />} isLoading={isLoading}/>
+        <StatCard title="Pendapatan Lunas (Bulan Ini)" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(stats.thisMonth)} icon={<Banknote className="w-6 h-6 text-indigo-500" />} isLoading={isLoading}/>
       </div>
-
-      {/* Grafik Pendapatan */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-700 dark:text-white">Grafik Pendapatan</h2>
-            <div className="flex space-x-2">
-                <Button size="sm" variant={timeRange === '7days' ? 'default' : 'outline'} onClick={() => setTimeRange('7days')}>7 Hari</Button>
-                <Button size="sm" variant={timeRange === '1month' ? 'default' : 'outline'} onClick={() => setTimeRange('1month')}>1 Bulan</Button>
-                <Button size="sm" variant={timeRange === '6months' ? 'default' : 'outline'} onClick={() => setTimeRange('6months')}>6 Bulan</Button>
+      
+       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Rincian Pemasukan per Hari</h2>
+             <div className="flex items-center gap-2 p-1 bg-gray-100 dark:bg-gray-900 rounded-lg">
+                <Button size="sm" variant={statusFilter === 'semua' ? 'default' : 'ghost'} className="dark:text-white" onClick={() => setStatusFilter('semua')}>Semua</Button>
+                <Button size="sm" variant={statusFilter === 'lunas' ? 'default' : 'ghost'} className="dark:text-white" onClick={() => setStatusFilter('lunas')}>Lunas</Button>
+                <Button size="sm" variant={statusFilter === 'hutang' ? 'default' : 'ghost'} className="dark:text-white" onClick={() => setStatusFilter('hutang')}>Hutang</Button>
             </div>
         </div>
-        {isLoading ? (
-            <div className="flex justify-center items-center h-[350px]">
-                <LoaderCircle className="w-8 h-8 animate-spin text-indigo-500" />
-            </div>
-        ) : (
-            <div style={{ width: '100%', height: 350 }}>
-            <ResponsiveContainer>
-                <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `Rp${Number(value) / 1000}k`} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(79, 70, 229, 0.1)' }} />
-                <Bar dataKey="total" fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                </BarChart>
-            </ResponsiveContainer>
-            </div>
-        )}
-      </div>
-
-       {/* Tabel Rincian Pendapatan Harian */}
-       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <h2 className="text-xl font-semibold text-gray-700 dark:text-white p-6 border-b dark:border-gray-700">Rincian Pendapatan per Hari</h2>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm">
             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
               <tr>
-                <th scope="col" className="px-6 py-3">Tanggal</th>
-                <th scope="col" className="px-6 py-3 text-right">Total Pendapatan</th>
-                <th scope="col" className="px-6 py-3 text-center">Aksi</th>
+                <th className="px-6 py-3">Tanggal</th>
+                <th className="px-6 py-3">Total Transaksi</th>
+                <th className="px-6 py-3 text-right">Pendapatan Lunas</th>
+                <th className="px-6 py-3 text-right">Pendapatan Hutang</th>
+                <th className="px-6 py-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr>
-                  <td colSpan={3} className="text-center p-8">
-                    <LoaderCircle className="w-6 h-6 mx-auto animate-spin" />
-                  </td>
-                </tr>
-              ) : tableData.length > 0 ? (
-                tableData.map((row) => (
-                  <tr key={row.date} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/20">
+                <tr><td colSpan={5} className="text-center p-8"><LoaderCircle className="w-6 h-6 mx-auto animate-spin" /></td></tr>
+              ) : paginatedData.length > 0 ? (
+                paginatedData.map((row) => (
+                  <tr key={row.date} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                      {new Date(row.date).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      {new Date(row.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4 text-right font-semibold">
-                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(row.total)}
-                    </td>
+                    <td className="px-6 py-4">{row.transaksi} Transaksi</td>
+                    <td className="px-6 py-4 text-right font-semibold text-green-600">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(row.lunas)}</td>
+                    <td className="px-6 py-4 text-right font-semibold text-yellow-600">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(row.hutang)}</td>
                     <td className="px-6 py-4 text-center">
-                      <Button variant="outline" size="sm" onClick={() => toast.success('Fitur detail akan datang!')}>
-                        Lihat Detail
-                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDetailClick(row.date)}>Lihat Detail</Button>
                     </td>
                   </tr>
                 ))
               ) : (
-                 <tr>
-                    <td colSpan={3} className="text-center p-8 text-gray-500">
-                        Tidak ada data pendapatan untuk ditampilkan.
-                    </td>
-                </tr>
+                 <tr><td colSpan={5} className="text-center p-8 text-gray-500">Tidak ada data untuk filter yang dipilih.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        {/* Tambahkan Paginasi di sini jika datanya sangat banyak */}
+        
+        {totalPages > 1 && (
+            <div className="p-4 flex justify-center items-center gap-4">
+                <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">
+                   Halaman {currentPage} dari {totalPages}
+                </span>
+                <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+        )}
        </div>
     </div>
   );
