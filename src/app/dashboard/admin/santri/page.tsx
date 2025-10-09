@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -11,6 +11,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  LoaderCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,39 +48,36 @@ export default function SantriPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSantri, setEditingSantri] = useState<Santri | null>(null);
-
   const [filterType, setFilterType] = useState<"semua" | "kelas" | "jurusan">(
     "semua"
   );
   const [selectedKelas, setSelectedKelas] = useState("");
   const [selectedJurusan, setSelectedJurusan] = useState("");
-
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedSantri, setSelectedSantri] = useState<Set<string>>(new Set());
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
-  // Fetch awal
-  useEffect(() => {
-    const fetchSantri = async () => {
-      setIsLoading(true);
-      try {
-        const token = localStorage.getItem("accessToken") || "";
-        const data = await getSantriList(token);
-        setSantriList(data);
-      } catch (error) {
-        toast.error("Gagal mengambil data santri.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchSantri();
+  const fetchSantri = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await getSantriList();
+      setSantriList(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("fetchSantri error:", error);
+      toast.error("Gagal mengambil data santri.");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // --- CREATE ---
+  useEffect(() => {
+    fetchSantri();
+  }, [fetchSantri]);
+
   const handleCreateSantri = async (data: SantriFormData) => {
-    toast.promise(
+    await toast.promise(
       createSantri({
         name: data.name,
         kelas: data.kelas,
@@ -87,21 +85,20 @@ export default function SantriPage() {
       }),
       {
         loading: "Menambahkan santri...",
-        success: (newSantri) => {
-          setSantriList((prev) => [newSantri, ...prev]);
+        success: () => {
           setIsModalOpen(false);
+          fetchSantri();
           return "Santri berhasil ditambahkan!";
         },
-        error: (err) => `Gagal: ${err.message}`,
+        error: (err: any) => `Gagal: ${err.message}`,
       }
     );
   };
 
-  // --- UPDATE (single) ---
   const handleUpdateSantri = async (data: SantriFormData) => {
     if (!editingSantri) return;
 
-    toast.promise(
+    await toast.promise(
       updateSantriBulk([Number(editingSantri.id)], {
         name: data.name,
         kelas: data.kelas,
@@ -110,91 +107,84 @@ export default function SantriPage() {
       {
         loading: "Menyimpan perubahan...",
         success: () => {
-          setSantriList((prev) =>
-            prev.map((s) =>
-              s.id === editingSantri.id
-                ? {
-                    ...s,
-                    ...data,
-                    jurusan: data.jurusan.toUpperCase() as "RPL" | "TKJ",
-                  }
-                : s
-            )
-          );
           setEditingSantri(null);
           setIsModalOpen(false);
-          setSelectedSantri(new Set());
-          setIsSelectionMode(false);
+          fetchSantri();
           return "Santri berhasil diperbarui!";
         },
-        error: (err) => `Gagal: ${err.message}`,
+        error: (err: any) => `Gagal: ${err.message}`,
       }
     );
   };
 
-  // --- UPDATE BULK ---
   const handleBulkUpdateSantri = async (kelas?: string, jurusan?: string) => {
     if (selectedSantri.size === 0) {
       toast.error("Tidak ada santri yang dipilih.");
       return;
     }
-
-    const ids = Array.from(selectedSantri).map((id) => Number(id));
+    const ids = Array.from(selectedSantri, Number);
     const data: Record<string, string | undefined> = {};
     if (kelas) data.kelas = kelas;
     if (jurusan) data.jurusan = jurusan;
 
-    toast.promise(updateSantriBulk(ids, data), {
+    await toast.promise(updateSantriBulk(ids, data), {
       loading: "Menyimpan perubahan...",
       success: () => {
-        setSantriList((prev) =>
-          prev.map((s) =>
-            selectedSantri.has(String(s.id))
-              ? {
-                  ...s,
-                  kelas: kelas ?? s.kelas,
-                  jurusan: (jurusan ?? s.jurusan) as "RPL" | "TKJ",
-                }
-              : s
-          )
-        );
-        setSelectedSantri(new Set());
-        setIsSelectionMode(false);
         setIsBulkModalOpen(false);
+        setSelectedSantri(new Set());
+        fetchSantri();
         return "Santri berhasil diperbarui!";
       },
-      error: (err) => `Gagal: ${err.message}`,
+      error: (err: any) => `Gagal: ${err.message}`,
     });
   };
 
-  // --- DELETE BULK ---
+  // ======= FIXED handleBulkDelete =======
   const handleBulkDelete = async () => {
     if (selectedSantri.size === 0) {
       toast.error("Tidak ada santri yang dipilih.");
       return;
     }
 
-    const toastId = toast.loading("Menghapus data...", {
-      duration: 60000,
-    });
+    // Native confirm (reliable). Bisa ganti ke Swal bila mau UI lebih baik.
+    const confirmed = window.confirm(
+      `Anda akan menghapus ${selectedSantri.size} santri. Tindakan ini tidak dapat dibatalkan. Lanjutkan?`
+    );
+    if (!confirmed) return;
+
+    const ids = Array.from(selectedSantri).map((id) => Number(id));
+    console.log("Deleting santri ids:", ids);
 
     try {
-      const ids = Array.from(selectedSantri).map((id) => Number(id));
-      await deleteSantriBulk(ids);
-      setSantriList((prev) => prev.filter((s) => !selectedSantri.has(s.id)));
-      setSelectedSantri(new Set());
-      setIsSelectionMode(false);
-      toast.success("Santri terpilih berhasil dihapus!", { id: toastId });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-          ? error
-          : "Terjadi kesalahan";
-      toast.error(`Gagal menghapus: ${errorMessage}`, { id: toastId });
+      setIsDeletingBulk(true);
+
+      await toast.promise(
+        // deleteSantriBulk harus mengembalikan Promise (fetchAPI)
+        deleteSantriBulk(ids),
+        {
+          loading: "Menghapus data...",
+          success: (res: any) => {
+            // refresh data & reset UI
+            setSelectedSantri(new Set());
+            setIsSelectionMode(false);
+            fetchSantri();
+            return "Santri terpilih berhasil dihapus!";
+          },
+          error: (err: any) => {
+            // err mungkin adalah Error object atau response dari server
+            console.error("deleteSantriBulk error:", err);
+            return err?.message || "Gagal menghapus data.";
+          },
+        }
+      );
+    } catch (err) {
+      console.error("Unexpected error during bulk delete:", err);
+      toast.error("Terjadi kesalahan saat menghapus.");
+    } finally {
+      setIsDeletingBulk(false);
     }
   };
+  // =======================================
 
   const handleSelectSantri = (id: string) => {
     const newSelection = new Set(selectedSantri);
@@ -215,7 +205,6 @@ export default function SantriPage() {
     }
   };
 
-  // --- Filter & Pagination ---
   const uniqueKelas = useMemo(
     () => Array.from(new Set(santriList.map((s) => s.kelas))).sort(),
     [santriList]
@@ -254,7 +243,6 @@ export default function SantriPage() {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
-  // --- UI ---
   const SelectionActionBar = () => (
     <div className="flex items-center justify-between bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
       <span className="text-sm font-medium">
@@ -280,8 +268,22 @@ export default function SantriPage() {
         >
           <Edit className="w-4 h-4 mr-2" /> Edit
         </Button>
-        <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-          <Trash2 className="w-4 h-4 mr-2" /> Hapus
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isDeletingBulk || selectedSantri.size === 0}
+          onClick={handleBulkDelete}
+        >
+          {isDeletingBulk ? (
+            <>
+              <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
+              Menghapus...
+            </>
+          ) : (
+            <>
+              <Trash2 className="w-4 h-4 mr-2" /> Hapus
+            </>
+          )}
         </Button>
         <Button
           variant="ghost"
@@ -351,7 +353,6 @@ export default function SantriPage() {
           </div>
         </div>
 
-        {/* Filter & Search */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -364,7 +365,9 @@ export default function SantriPage() {
           </div>
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-gray-600">Filter:</span>
+              <span className="text-sm font-medium text-gray-600">
+                Filter:
+              </span>
               <Button
                 size="sm"
                 variant={filterType === "semua" ? "default" : "outline"}
@@ -430,7 +433,9 @@ export default function SantriPage() {
                       onChange={handleSelectAll}
                       checked={
                         paginatedSantri.length > 0 &&
-                        paginatedSantri.every((s) => selectedSantri.has(s.id))
+                        paginatedSantri.every((s) =>
+                          selectedSantri.has(s.id)
+                        )
                       }
                     />
                   </th>
@@ -450,7 +455,10 @@ export default function SantriPage() {
                     colSpan={isSelectionMode ? 6 : 5}
                     className="text-center p-8"
                   >
-                    Memuat data...
+                    <div className="flex items-center justify-center">
+                      <LoaderCircle className="w-6 h-6 animate-spin" />
+                      <span className="ml-2">Memuat data...</span>
+                    </div>
                   </td>
                 </tr>
               ) : paginatedSantri.length > 0 ? (
@@ -493,23 +501,20 @@ export default function SantriPage() {
                     colSpan={isSelectionMode ? 6 : 5}
                     className="text-center p-8 text-gray-500"
                   >
-                    Tidak ada data santri
+                    Tidak ada data santri yang cocok.
                   </td>
                 </tr>
               )}
-              <tr>
-                <td>
-                  <div className="p-4 flex justify-start">
-                    <PaginationControls />
-                  </div>
-                </td>
-              </tr>
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="p-4 flex justify-center border-t dark:border-gray-700">
+              <PaginationControls />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal untuk Tambah/Edit */}
       <SantriFormModal
         isOpen={isModalOpen}
         onClose={() => {
@@ -522,7 +527,6 @@ export default function SantriPage() {
         initialData={editingSantri || undefined}
       />
 
-      {/* Modal untuk Bulk Edit */}
       <BulkEditModal
         isOpen={isBulkModalOpen}
         onClose={() => setIsBulkModalOpen(false)}
