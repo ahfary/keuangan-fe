@@ -1,8 +1,8 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, FormEvent, useMemo, useCallback } from "react";
+import React, { useState, FormEvent, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -23,18 +23,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
 import {
-  getSantriDetail,
   updateSantriDetail,
   generateWalsan,
-  getHistoryBySantriId,
-  getAllItems,
-  getWalsanList,
 } from "@/lib/api";
 import toast from "react-hot-toast";
 
-// --- Tipe Data
+// --- Tipe Data (Tidak Berubah) ---
 interface SantriDetail {
   id: number;
   name: string;
@@ -66,7 +62,6 @@ interface SantriEditData {
   kelas: string;
 }
 
-// Walsan minimal type (untuk check apakah sudah ada)
 interface WalsanMinimal {
   id: string;
   email: string;
@@ -77,7 +72,15 @@ interface WalsanMinimal {
   };
 }
 
-// --- Komponen TransactionList
+interface GenerateWalsanResponse {
+    user: {
+        email: string;
+        username: string;
+    }
+}
+
+
+// --- Komponen-komponen (TransactionList, EditSantriModal, WalsanInfoModal) tidak berubah ---
 const TransactionList = ({
   transactions,
   itemsMap,
@@ -140,7 +143,6 @@ const TransactionList = ({
   </div>
 );
 
-// --- Komponen EditSantriModal
 const EditSantriModal = ({
   santri,
   isOpen,
@@ -208,7 +210,6 @@ const EditSantriModal = ({
   );
 };
 
-// --- Komponen WalsanInfoModal (MODIFIKASI DI SINI) ---
 const WalsanInfoModal = ({
   isOpen,
   onClose,
@@ -216,7 +217,6 @@ const WalsanInfoModal = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  // Tambahkan username ke tipe credentials
   credentials: { email: string; username: string; password?: string } | null;
 }) => {
   const router = useRouter();
@@ -271,7 +271,6 @@ const WalsanInfoModal = ({
               </Button>
             </div>
           </div>
-          {/* --- BLOK BARU UNTUK USERNAME --- */}
           <div>
             <Label>Username (untuk Mobile)</Label>
             <div className="flex items-center gap-2">
@@ -281,7 +280,6 @@ const WalsanInfoModal = ({
               </Button>
             </div>
           </div>
-          {/* ---------------------------------- */}
           <div>
             <Label>Password Default</Label>
             <div className="flex items-center gap-2">
@@ -308,152 +306,105 @@ export default function SantriDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
-  const [santri, setSantri] = useState<SantriDetail | null>(null);
-  const [transactions, setTransactions] = useState<TransactionHistory[]>([]);
-  const [itemsMap, setItemsMap] = useState<Map<number, Item>>(new Map());
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // --- State untuk UI Interaktif ---
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isGeneratingWalsan, setIsGeneratingWalsan] = useState(false);
-
-  // states for walsan check & walsan info modal
-  const [hasWalsan, setHasWalsan] = useState(false);
-  const [existingWalsanEmail, setExistingWalsanEmail] = useState<string | null>(null);
   const [isWalsanInfoModalOpen, setIsWalsanInfoModalOpen] = useState(false);
-  // Modifikasi state untuk menampung username
   const [generatedWalsanCreds, setGeneratedWalsanCreds] = useState<{ email: string; username: string; password?: string } | null>(null);
-
-  // pagination
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Fetch santri detail, history, items
-  const fetchAllData = useCallback(async () => {
-    if (!id) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [santriData, historyData, itemsData] = await Promise.all([
-        getSantriDetail(id),
-        getHistoryBySantriId(id),
-        getAllItems(),
-      ]);
+  // --- REFAKTOR: Pengambilan data menggunakan useAxios ---
+  const { data: santri, error: santriError, isLoading: isLoadingSantri, refetch: refetchSantri } = useAxios<SantriDetail>({ url: `/santri/detail/${id}` });
+  const { data: historyData, error: historyError, isLoading: isLoadingHistory } = useAxios<TransactionHistory[]>({ url: `/history/santri/${id}` });
+  const { data: itemsData, error: itemsError, isLoading: isLoadingItems } = useAxios<Item[]>({ url: '/items' });
+  const { data: walsanList, error: walsanError, isLoading: isLoadingWalsan, refetch: refetchWalsan } = useAxios<WalsanMinimal[]>({ url: '/santri/walsan' });
+  
+  const isLoading = isLoadingSantri || isLoadingHistory || isLoadingItems || isLoadingWalsan;
+  const combinedError = santriError || historyError || itemsError || walsanError;
 
-      const newItemsMap = new Map<number, Item>();
-      if (Array.isArray(itemsData)) {
-        itemsData.forEach((item: Item) => newItemsMap.set(item.id, item));
-      }
-
-      setSantri(santriData);
-      const sortedHistory = Array.isArray(historyData)
-        ? historyData.sort((a: TransactionHistory, b: TransactionHistory) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        : [];
-      setTransactions(sortedHistory);
-      setItemsMap(newItemsMap);
-    } catch (err: any) {
-      setError(err?.message || "Gagal memuat data.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  // Fetch whether this santri already has walsan account
-  const checkWalsanExists = useCallback(async () => {
-    if (!id) return;
-    try {
-      const walsanList = await getWalsanList(); // returns array
-      if (Array.isArray(walsanList)) {
-        const found = (walsanList as WalsanMinimal[]).find((w) =>
-          Array.isArray(w.parent?.santri) && w.parent.santri.some((s) => Number(s.id) === Number(id))
-        );
-        if (found) {
-          setHasWalsan(true);
-          setExistingWalsanEmail(found.email || null);
-        } else {
-          setHasWalsan(false);
-          setExistingWalsanEmail(null);
-        }
-      } else {
-        setHasWalsan(false);
-        setExistingWalsanEmail(null);
-      }
-    } catch (err) {
-      setHasWalsan(false);
-      setExistingWalsanEmail(null);
-      console.error("Gagal mengecek walsan:", err);
-    }
-  }, [id]);
-
+  // Tampilkan toast jika ada error
   useEffect(() => {
-    fetchAllData();
-    checkWalsanExists();
-  }, [fetchAllData, checkWalsanExists]);
+    if (combinedError) {
+      toast.error(combinedError);
+    }
+  }, [combinedError]);
 
-  // pagination for transactions
+  // --- Proses data turunan menggunakan useMemo agar efisien ---
+  const itemsMap = useMemo(() => {
+      const map = new Map<number, Item>();
+      itemsData?.forEach((item) => map.set(item.id, item));
+      return map;
+  }, [itemsData]);
+  
+  const transactions = useMemo(() => 
+      historyData?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [],
+  [historyData]);
+
+  const { hasWalsan, existingWalsanEmail } = useMemo(() => {
+      if (!walsanList || !id) return { hasWalsan: false, existingWalsanEmail: null };
+      const found = walsanList.find(w => w.parent?.santri?.some(s => Number(s.id) === Number(id)));
+      return {
+          hasWalsan: !!found,
+          existingWalsanEmail: found?.email || null,
+      };
+  }, [walsanList, id]);
+  
+  // --- Logika Paginasi ---
   const totalPages = Math.max(1, Math.ceil(transactions.length / ITEMS_PER_PAGE));
   const paginatedTransactions = useMemo(() => {
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return transactions.slice(startIndex, endIndex);
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      return transactions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [transactions, currentPage]);
 
   const handleNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const handlePrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
-
+  
+  // --- Handler untuk Update Santri ---
   const handleUpdateSantri = async (data: SantriEditData) => {
     if (!santri) return;
-    const promise = updateSantriDetail(id, data).then(async (updatedSantri) => {
-      setSantri((prev) => (prev ? { ...prev, ...updatedSantri } : null));
-      setIsEditModalOpen(false);
-      await fetchAllData();
-      return updatedSantri;
-    });
-
+    const promise = updateSantriDetail(id, data);
+    
     toast.promise(promise, {
       loading: "Menyimpan perubahan...",
-      success: async (updatedSantri) => {
-        setSantri((prev) => (prev ? { ...prev, ...(updatedSantri as any) } : null));
-        setIsEditModalOpen(false);
-        await fetchAllData();
-        return "Data santri berhasil diperbarui!";
-      },
-      error: (err: any) => `Gagal memperbarui data: ${err?.message || err}`,
+      success: "Data santri berhasil diperbarui!",
+      error: (err: any) => `Gagal: ${err?.message || "Terjadi kesalahan"}`,
     });
-  };
 
-  // Handler untuk generate walsan (MODIFIKASI DI SINI)
+    try {
+      await promise;
+      setIsEditModalOpen(false);
+      refetchSantri(); // Panggil refetch untuk memperbarui data santri
+    } catch (err) {
+      // Error sudah ditangani oleh toast.promise
+    }
+  };
+  
+  // --- Handler untuk Generate Walsan ---
   const handleGenerateWalsan = async () => {
-    if (!santri) return;
-    if (hasWalsan) {
-      toast.error("Akun walsan sudah ada untuk santri ini.");
+    if (!santri || hasWalsan) {
+      toast.error("Akun walsan sudah ada atau data santri tidak valid.");
       return;
     }
 
     setIsGeneratingWalsan(true);
     try {
-      const res = await generateWalsan(santri.id);
+      const res = await generateWalsan(santri.id) as unknown as GenerateWalsanResponse;
 
-      // Ekstrak email dan username dari response API
-      const email = res?.data?.user?.email || res?.user?.email || null;
-      const username = res?.data?.user?.username || res?.user?.username || null;
-
-      if (!email || !username) {
+      if (!res?.user?.email || !res?.user?.username) {
         throw new Error("Respons dari server tidak valid.");
       }
       
-      // Set state dengan email dan username
-      setGeneratedWalsanCreds({ email, username, password: "smkmqbisa" });
+      setGeneratedWalsanCreds({ email: res.user.email, username: res.user.username, password: "smkmqbisa" });
       setIsWalsanInfoModalOpen(true);
-      setHasWalsan(true);
-      setExistingWalsanEmail(email);
-      
-      checkWalsanExists();
+      refetchWalsan(); // Ambil ulang daftar walsan
     } catch (err: any) {
       toast.error(`Gagal: ${err?.message || "Terjadi kesalahan."}`);
     } finally {
       setIsGeneratingWalsan(false);
     }
   };
-
+  
+  // --- Render Logic ---
   if (isLoading)
     return (
       <div className="flex justify-center items-center h-full pt-20">
@@ -461,12 +412,12 @@ export default function SantriDetailPage() {
       </div>
     );
 
-  if (error)
+  if (combinedError)
     return (
       <div className="text-center pt-20 flex flex-col items-center">
         <SearchX className="w-16 h-16 text-red-500 mb-4" />
         <h2 className="text-2xl font-bold">Gagal Memuat Data</h2>
-        <p className="text-gray-500 mt-2">{error}</p>
+        <p className="text-gray-500 mt-2">{combinedError}</p>
         <Link href="/dashboard/admin/santri" className="mt-6 inline-block">
           <Button>
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -481,7 +432,6 @@ export default function SantriDetailPage() {
   return (
     <>
       <div className="flex flex-col h-full space-y-6">
-        {/* Header & breadcrumb */}
         <div>
           <Link href="/dashboard/admin/santri" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4 dark:text-gray-400 dark:hover:text-white">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -489,7 +439,6 @@ export default function SantriDetailPage() {
           </Link>
         </div>
 
-        {/* Profil card */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex items-center justify-between flex-shrink-0">
           <div className="flex items-center">
             <div className="bg-indigo-100 dark:bg-indigo-900 p-4 rounded-full mr-6">
@@ -532,7 +481,6 @@ export default function SantriDetailPage() {
           </div>
         </div>
 
-        {/* Grid Info & Transaksi */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
           <div className="md:col-span-1 flex flex-col gap-6">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md flex flex-1 items-center">
@@ -571,11 +519,11 @@ export default function SantriDetailPage() {
               {totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="icon" onClick={handlePrevPage} disabled={currentPage === 1}>
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4" />
                   </Button>
                   <span className="text-sm font-medium">{currentPage} / {totalPages}</span>
                   <Button variant="outline" size="icon" onClick={handleNextPage} disabled={currentPage === totalPages}>
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4" />
                   </Button>
                 </div>
               )}
@@ -591,7 +539,6 @@ export default function SantriDetailPage() {
         </div>
       </div>
 
-      {/* Modals */}
       {santri && (
         <EditSantriModal santri={santri} isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSave={handleUpdateSantri} />
       )}
@@ -600,3 +547,4 @@ export default function SantriDetailPage() {
     </>
   );
 }
+

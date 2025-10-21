@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useEffect, FormEvent, useMemo, useRef } from "react";
@@ -19,7 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getItems, createItem, updateItem, deleteItem, getAllKategori } from "@/lib/api";
+import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
+import { createItem, updateItem, deleteItem } from "@/lib/api";
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -40,22 +42,20 @@ interface Item {
   gambar?: string | null;
 }
 
-// Tipe untuk data form, termasuk file gambar yang mungkin ada
 interface ItemFormData {
   id?: number;
   nama: string;
   harga: string;
   jumlah: string;
   kategoriId: string;
-  gambarFile?: File | null; // Diganti agar tidak bentrok dengan `gambar` string dari item
-  gambarUrl?: string | null; // Untuk menyimpan URL gambar yang sudah ada
+  gambarFile?: File | null;
+  gambarUrl?: string | null;
 }
 
 const MySwal = withReactContent(Swal);
 const ITEMS_PER_PAGE = 8;
 
-// --- Komponen Tampilan (Tidak Ada Perubahan) ---
-
+// --- Komponen Tampilan (GridView dan TableView tidak berubah) ---
 const TableView = ({
   items,
   onEdit,
@@ -211,7 +211,7 @@ const GridView = ({
   </div>
 );
 
-// --- [PERBAIKAN] Komponen Modal Form ---
+
 const ItemFormModal = ({
   isOpen,
   onClose,
@@ -237,7 +237,7 @@ const ItemFormModal = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const modalTitle = itemData ? "Edit Data Barang" : "Tambah Barang Baru";
-  const isCreating = !itemData; // Tentukan apakah ini mode create atau update
+  const isCreating = !itemData;
 
   useEffect(() => {
     if (isOpen) {
@@ -277,13 +277,10 @@ const ItemFormModal = ({
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-
-    // --- [PERBAIKAN] Validasi input ---
     if (!formData.nama || !formData.harga || !formData.jumlah || !formData.kategoriId) {
       toast.error("Semua kolom wajib diisi.");
       return;
     }
-    // Validasi gambar hanya saat membuat item baru
     if (isCreating && !formData.gambarFile) {
       toast.error("Gambar barang wajib diunggah.");
       return;
@@ -291,7 +288,6 @@ const ItemFormModal = ({
     onSave(formData);
   };
   
-  // Helper untuk menambahkan tanda bintang jika field wajib diisi
   const RequiredLabel = ({ children }: { children: React.ReactNode }) => (
     <Label>
         {children} <span className="text-red-500">*</span>
@@ -315,7 +311,6 @@ const ItemFormModal = ({
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            {/* [PERBAIKAN] Label dibuat dinamis */}
             <Label>
                 Gambar Barang {isCreating && <span className="text-red-500">*</span>}
             </Label>
@@ -418,37 +413,36 @@ const ItemFormModal = ({
 };
 
 
-// --- Komponen Halaman Utama (Tidak ada perubahan logika) ---
+// --- Komponen Halaman Utama ---
 export default function StokPage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [kategori, setKategori] = useState<Kategori[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 2. Gunakan useAxios untuk mengambil data
+  const { data: items, isLoading: isLoadingItems, error: itemsError, refetch: fetchItems } = useAxios<Item[]>({ url: '/items', method: 'get' });
+  const { data: kategori, isLoading: isLoadingKategori, error: kategoriError, refetch: fetchKategori } = useAxios<Kategori[]>({ url: '/kategori', method: 'get' });
+  
+  const isLoading = isLoadingItems || isLoadingKategori;
+  const combinedError = itemsError || kategoriError;
+  const itemsList = items || [];
+  const kategoriList = kategori || [];
+
+  // State UI
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ItemFormData | null>(null);
   const [view, setView] = useState<"grid" | "table">("grid");
   const [isSaving, setIsSaving] = useState(false);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
-  const fetchItemsAndKategori = async () => {
-    setIsLoading(true);
-    try {
-      const [data, kategoriData] = await Promise.all([getItems(), getAllKategori()]);
-      setItems(Array.isArray(data) ? data : []);
-      setKategori(Array.isArray(kategoriData) ? kategoriData : []);
-    } catch (error: any) {
-      toast.error(`Gagal memuat data: ${error.message}`);
-      setItems([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
+  const fetchAllData = () => {
+      fetchItems();
+      fetchKategori();
+  }
 
   useEffect(() => {
-    fetchItemsAndKategori();
-  }, []);
+    if (combinedError) {
+      toast.error(`Gagal memuat data: ${combinedError}`);
+    }
+  }, [combinedError]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -456,16 +450,16 @@ export default function StokPage() {
 
   const uniqueCategories = useMemo(() => {
     const categories = new Set<string>();
-    items.forEach((item) => {
+    itemsList.forEach((item) => {
       if (item.kategori?.nama) {
         categories.add(item.kategori.nama);
       }
     });
     return Array.from(categories).sort();
-  }, [items]);
+  }, [itemsList]);
 
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+    return itemsList.filter((item) => {
       const matchesSearch = item.nama
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -474,7 +468,7 @@ export default function StokPage() {
         : true;
       return matchesSearch && matchesCategory;
     });
-  }, [items, searchTerm, selectedCategory]);
+  }, [itemsList, searchTerm, selectedCategory]);
 
   const paginatedItems = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -500,7 +494,6 @@ export default function StokPage() {
             disabled={currentPage === 1}
           >
             <ChevronLeft className="w-4 h-4" />
-            {!isTable && ""}
           </Button>
           <span className="text-sm">
             Halaman {currentPage} dari {totalPages}
@@ -511,7 +504,6 @@ export default function StokPage() {
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
-            {!isTable && ""}
             <ChevronRight className="w-4 h-4" />
           </Button>
       </div>
@@ -553,9 +545,9 @@ export default function StokPage() {
 
         await toast.promise(promise, {
             loading: "Menyimpan data barang...",
-            success: (result) => {
+            success: () => {
                 setIsModalOpen(false);
-                fetchItemsAndKategori();
+                fetchAllData();
                 return isUpdating
                     ? "Barang berhasil diperbarui!"
                     : "Barang baru berhasil ditambahkan!";
@@ -590,12 +582,7 @@ export default function StokPage() {
         toast.promise(promise, {
           loading: "Menghapus barang...",
           success: () => {
-            fetchItemsAndKategori();
-            MySwal.fire(
-              "Berhasil Dihapus!",
-              `Barang '${item.nama}' telah dihapus.`,
-              "success"
-            );
+            fetchAllData();
             return `Barang '${item.nama}' berhasil dihapus.`;
           },
           error: (err) => `Gagal menghapus: ${err.message}`,
@@ -697,7 +684,7 @@ export default function StokPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveItem}
         itemData={editingItem}
-        kategoriList={kategori}
+        kategoriList={kategoriList}
         isSaving={isSaving}
       />
     </div>

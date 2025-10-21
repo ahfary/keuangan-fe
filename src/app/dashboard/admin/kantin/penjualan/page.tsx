@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, ChevronDown, LoaderCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getSalesHistory, getAllItems } from '@/lib/api';
 import toast from 'react-hot-toast';
+import useAxios from '@/hooks/useAxios'; // 1. Impor custom hook
 
 // --- Tipe Data Disesuaikan dengan API ---
 interface SaleItemDetail {
@@ -36,7 +36,6 @@ interface SaleData {
 interface ItemData {
   nama: string;
   id: number;
-  name: string;
   // tambahkan field lain jika perlu
 }
 
@@ -44,48 +43,41 @@ const ITEMS_PER_PAGE = 6;
 
 // --- Komponen Utama Halaman Penjualan ---
 export default function PenjualanPage() {
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [salesData, setSalesData] = useState<SaleData[]>([]);
-  const [itemsData, setItemsData] = useState<ItemData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 2. Gunakan useAxios untuk mengambil data
+  const { data: salesData, isLoading: isLoadingSales, error: salesError } = useAxios<SaleData[]>({ url: '/history', method: 'get' });
+  const { data: itemsData, isLoading: isLoadingItems, error: itemsError } = useAxios<ItemData[]>({ url: '/items', method: 'get' });
   
-  // State untuk filter dan pencarian
+  const isLoading = isLoadingSales || isLoadingItems;
+  const combinedError = salesError || itemsError;
+  const salesList = salesData || [];
+  const itemsList = itemsData || [];
+
+  // State UI
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<'semua' | 'kelas' | 'jurusan'>('semua');
   const [selectedKelas, setSelectedKelas] = useState("");
   const [selectedJurusan, setSelectedJurusan] = useState("");
-  
-  // State untuk Pagination
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    const fetchSales = async () => {
-      setIsLoading(true);
-      try {
-        const [sales, items] = await Promise.all([
-          getSalesHistory(),
-          getAllItems()
-        ]);
-        setSalesData(Array.isArray(sales) ? sales : []);
-        setItemsData(Array.isArray(items) ? items : []);
-        console.log("Items Data:", items); // DEBUG: cek isi data item
-      } catch (error) {
-        toast.error("Gagal mengambil riwayat penjualan atau data item.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchSales();
-  }, []);
+    if (combinedError) {
+      toast.error(`Gagal memuat data: ${combinedError}`);
+    }
+  }, [combinedError]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, selectedKelas, selectedJurusan]);
   
   // --- Logika Filter ---
   const uniqueKelas = useMemo(
-    () => Array.from(new Set(salesData.map((s) => s.santri.kelas))).sort(),
-    [salesData]
+    () => Array.from(new Set(salesList.map((s) => s.santri?.kelas).filter(Boolean))).sort(),
+    [salesList]
   );
   
   const filteredData = useMemo(() => {
-    return salesData.filter((sale) => {
+    return salesList.filter((sale) => {
       const santri = sale.santri;
       if (!santri) return false;
 
@@ -99,14 +91,13 @@ export default function PenjualanPage() {
       }
       return matchesSearch;
     });
-  }, [salesData, searchTerm, filterType, selectedKelas, selectedJurusan]);
+  }, [salesList, searchTerm, filterType, selectedKelas, selectedJurusan]);
 
 
   // --- Logika Pagination ---
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    return filteredData.slice(startIndex, endIndex);
+    return filteredData.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredData, currentPage]);
 
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
@@ -122,41 +113,42 @@ export default function PenjualanPage() {
   };
   
   const PaginationControls = () => (
-    <div className="flex justify-center items-center gap-2 mt-4">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => handlePageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-      >
-        <ChevronLeft className="w-4 h-4" />
-      </Button>
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+    totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-4">
         <Button
-          key={page}
-          size="sm"
-          variant={currentPage === page ? "default" : "outline"}
-          onClick={() => handlePageChange(page)}
+            size="sm"
+            variant="outline"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
         >
-          {page}
+            <ChevronLeft className="w-4 h-4" />
         </Button>
-      ))}
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => handlePageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-      >
-        <ChevronRight className="w-4 h-4" />
-      </Button>
-    </div>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <Button
+            key={page}
+            size="sm"
+            variant={currentPage === page ? "default" : "outline"}
+            onClick={() => handlePageChange(page)}
+            >
+            {page}
+            </Button>
+        ))}
+        <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+        >
+            <ChevronRight className="w-4 h-4" />
+        </Button>
+        </div>
+    )
   );
 
 
   // Helper untuk cari nama item
   const getItemName = (itemId: number) => {
-    const item = itemsData.find(i => i.id === itemId);
-    // Ganti 'name' dengan field yang sesuai jika berbeda
+    const item = itemsList.find(i => i.id === itemId);
     return item ? (item.nama || `Item ID: ${itemId}`) : `Item ID: ${itemId}`;
   };
 
@@ -213,78 +205,80 @@ export default function PenjualanPage() {
 
       {/* --- Tabel Data Penjualan --- */}
       <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
-        <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-            <tr>
-              <th scope="col" className="px-6 py-3">Nama Santri</th>
-              <th scope="col" className="px-6 py-3">Tanggal</th>
-              <th scope="col" className="px-6 py-3">Metode Bayar</th>
-              <th scope="col" className="px-6 py-3 text-right">Total Harga</th>
-              <th scope="col" className="px-6 py-3 text-center">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={5} className="text-center p-8"><LoaderCircle className="w-6 h-6 mx-auto animate-spin" /></td></tr>
-            ) : paginatedData.map((sale) => (
-              <React.Fragment key={sale.id}>
-                <tr className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4 font-medium">{sale.santri.name}</td>
-                  <td className="px-6 py-4 text-gray-500">{new Date(sale.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "px-2 py-1 text-xs font-medium rounded-full",
-                      sale.status === 'Lunas' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                    )}>
-                      {sale.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-semibold text-right">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(sale.totalAmount)}</td>
-                  <td className="px-6 py-4 text-center">
-                    <Button variant="ghost" size="sm" onClick={() => handleToggleRow(sale.id)}>
-                      Detail
-                      <ChevronDown className={cn("w-4 h-4 ml-2 transition-transform", expandedRow === sale.id && "rotate-180")} />
-                    </Button>
-                  </td>
-                </tr>
-                {expandedRow === sale.id && (
-                  <tr className="bg-gray-50 dark:bg-gray-900/50">
-                    <td colSpan={5} className="p-4">
-                      <div className="p-4 bg-white dark:bg-gray-800 rounded-md">
-                        <h4 className="font-bold mb-2 text-gray-800 dark:text-white">Detail Item (Transaksi ID: {sale.id}):</h4>
-                        <ul className="space-y-1">
-                          {sale.items.map((item) => (
-                            <li key={item.id} className="flex justify-between text-gray-600 dark:text-gray-300 border-b border-dashed last:border-none py-1">
-                              <span>
-                                {getItemName(item.itemId)} <span className="text-gray-400">x{item.quantity}</span>
-                              </span>
-                              <span className="font-mono">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.priceAtPurchase * item.quantity)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-             { !isLoading && paginatedData.length === 0 && (
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                 <tr>
-                    <td colSpan={5} className="text-center p-8 text-gray-500">
-                        Tidak ada data yang cocok dengan filter.
-                    </td>
+                <th scope="col" className="px-6 py-3">Nama Santri</th>
+                <th scope="col" className="px-6 py-3">Tanggal</th>
+                <th scope="col" className="px-6 py-3">Metode Bayar</th>
+                <th scope="col" className="px-6 py-3 text-right">Total Harga</th>
+                <th scope="col" className="px-6 py-3 text-center">Aksi</th>
                 </tr>
-            )}
-          </tbody>
-        </table>
-         {totalPages > 1 && (
-          <div className="p-4 flex justify-start">
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr><td colSpan={5} className="text-center p-8"><LoaderCircle className="w-6 h-6 mx-auto animate-spin" /></td></tr>
+              ) : paginatedData.length > 0 ? (
+                paginatedData.map((sale) => (
+                  <React.Fragment key={sale.id}>
+                    <tr className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-4 font-medium">{sale.santri.name}</td>
+                      <td className="px-6 py-4 text-gray-500">{new Date(sale.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                      <td className="px-6 py-4">
+                        <span className={cn(
+                          "px-2 py-1 text-xs font-medium rounded-full",
+                          sale.status === 'Lunas' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        )}>
+                          {sale.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-right">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(sale.totalAmount)}</td>
+                      <td className="px-6 py-4 text-center">
+                        <Button variant="ghost" size="sm" onClick={() => handleToggleRow(sale.id)}>
+                          Detail
+                          <ChevronDown className={cn("w-4 h-4 ml-2 transition-transform", expandedRow === sale.id && "rotate-180")} />
+                        </Button>
+                      </td>
+                    </tr>
+                    {expandedRow === sale.id && (
+                      <tr className="bg-gray-50 dark:bg-gray-900/50">
+                        <td colSpan={5} className="p-4">
+                          <div className="p-4 bg-white dark:bg-gray-800 rounded-md">
+                            <h4 className="font-bold mb-2 text-gray-800 dark:text-white">Detail Item (Transaksi ID: {sale.id}):</h4>
+                            <ul className="space-y-1">
+                              {sale.items.map((item) => (
+                                <li key={item.id} className="flex justify-between text-gray-600 dark:text-gray-300 border-b border-dashed last:border-none py-1">
+                                  <span>
+                                    {getItemName(item.itemId)} <span className="text-gray-400">x{item.quantity}</span>
+                                  </span>
+                                  <span className="font-mono">{new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.priceAtPurchase * item.quantity)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="text-center p-8 text-gray-500">
+                    Tidak ada data yang cocok dengan filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            </table>
+        </div>
+         <div className="p-4 flex justify-start">
             <PaginationControls />
-          </div>
-        )}
+         </div>
       </div>
     </div>
   );
 }
+

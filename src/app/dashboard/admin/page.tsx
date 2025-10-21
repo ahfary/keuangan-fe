@@ -196,7 +196,7 @@ export default function DashboardPage() {
   const [topSantri, setTopSantri] = useState<TopSantri[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // --- FIX: State untuk menyimpan nama pengguna, hanya di-set di client ---
+  // --- FIX: Deklarasikan state untuk userName ---
   const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -213,14 +213,13 @@ export default function DashboardPage() {
           getTopBalanceSantri(),
         ]);
         
-        // Pastikan ada data sebelum set state
         setStats({
-          totalSantri: santriData?.data?.total || santriData || 0,
-          totalSaldo: saldoData?.data?.totalSaldo || saldoData || 0,
-          totalHutang: hutangData?.data?.totalHutang || hutangData || 0,
+          totalSantri: (santriData as any)?.total || (santriData as unknown as number) || 0,
+          totalSaldo: (saldoData as any)?.totalSaldo || (saldoData as unknown as number) || 0,
+          totalHutang: (hutangData as any)?.totalHutang || (hutangData as unknown as number) || 0,
         });
 
-        setTopSantri(topSantriData?.data || topSantriData || []);
+        setTopSantri(Array.isArray(topSantriData) ? topSantriData : []);
 
       } catch (error) {
         toast.error("Gagal memuat data dashboard.");
@@ -244,13 +243,11 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
           Dashboard Overview
         </h1>
-        {/* --- FIX: Gunakan state `userName` untuk menampilkan nama --- */}
         <p className="mt-1 text-gray-600 dark:text-gray-400">
           {userName ? `Selamat datang kembali, ${userName}!` : "Memuat..."}
         </p>
       </div>
 
-      {/* Kartu Statistik */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Santri"
@@ -278,9 +275,7 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Grafik + Saldo Terbanyak */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Grafik */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-gray-700 dark:text-white">
@@ -308,7 +303,6 @@ export default function DashboardPage() {
           <TransactionChart data={chartData[range]} />
         </div>
 
-        {/* Saldo Terbanyak */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold text-gray-700 dark:text-white mb-4">
             Saldo Terbanyak

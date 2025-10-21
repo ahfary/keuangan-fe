@@ -1,14 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
 import Link from 'next/link';
-// --- PERBAIKAN 1: Impor fungsi yang benar ---
-import { getSantriList } from '@/lib/api';
 import toast from 'react-hot-toast';
+import useAxios from '@/hooks/useAxios'; // 1. Impor custom hook
 
 // --- Tipe Data untuk Santri yang Berhutang ---
 interface SantriHutang {
@@ -22,32 +20,34 @@ interface SantriHutang {
 const ITEMS_PER_PAGE = 6;
 
 export default function ManajemenHutangPage() {
-  const [dataHutang, setDataHutang] = useState<SantriHutang[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 2. Gunakan useAxios untuk mengambil semua data santri
+  const { data: allSantri, isLoading, error } = useAxios<SantriHutang[]>({
+    url: '/santri',
+    method: 'get'
+  });
+
+  // State UI
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'semua' | 'kelas' | 'jurusan'>('semua');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedJurusan, setSelectedJurusan] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Tampilkan toast jika ada error
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // --- PERBAIKAN 2: Gunakan getSantriList dan filter hasilnya ---
-        const allSantri = await getSantriList();
-        const santriWithHutang = allSantri.filter((santri: SantriHutang) => santri.hutang > 0);
-        setDataHutang(santriWithHutang);
-      } catch (error) {
+    if (error) {
         toast.error("Gagal mengambil data piutang santri.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    }
+  }, [error]);
 
-  // --- Logika Filter ---
+  // 3. Proses data yang sudah diambil untuk memfilter yang punya hutang
+  const dataHutang = useMemo(() => {
+    if (!allSantri) return [];
+    return allSantri.filter((santri) => santri.hutang > 0);
+  }, [allSantri]);
+
+
+  // --- Logika Filter (Tidak berubah) ---
   const uniqueKelas = useMemo(
     () => Array.from(new Set(dataHutang.map((s) => s.kelas))).sort(),
     [dataHutang]
@@ -66,7 +66,7 @@ export default function ManajemenHutangPage() {
     });
   }, [dataHutang, searchTerm, filterType, selectedKelas, selectedJurusan]);
 
-  // --- Logika Pagination ---
+  // --- Logika Pagination (Tidak berubah) ---
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -238,3 +238,4 @@ export default function ManajemenHutangPage() {
     </div>
   );
 }
+

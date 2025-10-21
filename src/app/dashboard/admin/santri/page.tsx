@@ -1,7 +1,8 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -15,9 +16,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
 import {
-  getSantriList,
   createSantri,
   deleteSantriBulk,
   updateSantriBulk,
@@ -25,7 +25,12 @@ import {
 import SantriFormModal from "./components/SantriFormModal";
 import toast from "react-hot-toast";
 import BulkEditModal from "./components/BulkEditModal";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
 
+const MySwal = withReactContent(Swal);
+
+// --- Tipe Data (Tidak Berubah) ---
 interface Santri {
   id: string;
   name: string;
@@ -43,14 +48,19 @@ type SantriFormData = {
 const ITEMS_PER_PAGE = 6;
 
 export default function SantriPage() {
-  const [santriList, setSantriList] = useState<Santri[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 2. Gunakan useAxios untuk mengambil data santri
+  const { data, isLoading, error, refetch: fetchSantri } = useAxios<Santri[]>({
+    url: "/santri",
+    method: "get",
+  });
+  // Fallback ke array kosong jika data null
+  const santriList = data || [];
+
+  // --- State untuk UI (Tidak berhubungan dengan data fetching) ---
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSantri, setEditingSantri] = useState<Santri | null>(null);
-  const [filterType, setFilterType] = useState<"semua" | "kelas" | "jurusan">(
-    "semua"
-  );
+  const [filterType, setFilterType] = useState<"semua" | "kelas" | "jurusan">("semua");
   const [selectedKelas, setSelectedKelas] = useState("");
   const [selectedJurusan, setSelectedJurusan] = useState("");
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -59,62 +69,57 @@ export default function SantriPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
 
-  const fetchSantri = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await getSantriList();
-      setSantriList(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      console.error("fetchSantri error:", error);
-      toast.error("Gagal mengambil data santri.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
+  // Tampilkan toast jika ada error dari hook
   useEffect(() => {
-    fetchSantri();
-  }, [fetchSantri]);
+    if (error) {
+      toast.error(`Gagal mengambil data santri: ${error}`);
+    }
+  }, [error]);
+  
+  // Reset halaman saat filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, selectedKelas, selectedJurusan]);
 
+
+  // --- Handler Functions (Gunakan `refetch` dari hook) ---
   const handleCreateSantri = async (data: SantriFormData) => {
-    await toast.promise(
-      createSantri({
+    const promise = createSantri({
         name: data.name,
         kelas: data.kelas,
         jurusan: (data.jurusan ?? "RPL").toUpperCase() as "TKJ" | "RPL",
-      }),
-      {
+    });
+
+    toast.promise(promise, {
         loading: "Menambahkan santri...",
         success: () => {
           setIsModalOpen(false);
-          fetchSantri();
+          fetchSantri(); // 3. Gunakan refetch
           return "Santri berhasil ditambahkan!";
         },
         error: (err: any) => `Gagal: ${err.message}`,
-      }
-    );
+    });
   };
 
   const handleUpdateSantri = async (data: SantriFormData) => {
     if (!editingSantri) return;
 
-    await toast.promise(
-      updateSantriBulk([Number(editingSantri.id)], {
+    const promise = updateSantriBulk([Number(editingSantri.id)], {
         name: data.name,
         kelas: data.kelas,
         jurusan: data.jurusan.toUpperCase(),
-      }),
-      {
+    });
+
+    toast.promise(promise, {
         loading: "Menyimpan perubahan...",
         success: () => {
           setEditingSantri(null);
           setIsModalOpen(false);
-          fetchSantri();
+          fetchSantri(); // 3. Gunakan refetch
           return "Santri berhasil diperbarui!";
         },
         error: (err: any) => `Gagal: ${err.message}`,
-      }
-    );
+    });
   };
 
   const handleBulkUpdateSantri = async (kelas?: string, jurusan?: string) => {
@@ -127,65 +132,61 @@ export default function SantriPage() {
     if (kelas) data.kelas = kelas;
     if (jurusan) data.jurusan = jurusan;
 
-    await toast.promise(updateSantriBulk(ids, data), {
+    const promise = updateSantriBulk(ids, data);
+
+    toast.promise(promise, {
       loading: "Menyimpan perubahan...",
       success: () => {
         setIsBulkModalOpen(false);
         setSelectedSantri(new Set());
-        fetchSantri();
+        fetchSantri(); // 3. Gunakan refetch
         return "Santri berhasil diperbarui!";
       },
       error: (err: any) => `Gagal: ${err.message}`,
     });
   };
 
-  // ======= FIXED handleBulkDelete =======
   const handleBulkDelete = async () => {
     if (selectedSantri.size === 0) {
       toast.error("Tidak ada santri yang dipilih.");
       return;
     }
 
-    // Native confirm (reliable). Bisa ganti ke Swal bila mau UI lebih baik.
-    const confirmed = window.confirm(
-      `Anda akan menghapus ${selectedSantri.size} santri. Tindakan ini tidak dapat dibatalkan. Lanjutkan?`
-    );
-    if (!confirmed) return;
+    const result = await MySwal.fire({
+        title: `Hapus ${selectedSantri.size} santri?`,
+        text: "Tindakan ini tidak dapat dibatalkan.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya, Hapus",
+        cancelButtonText: "Batal",
+    });
+
+    if (!result.isConfirmed) return;
 
     const ids = Array.from(selectedSantri).map((id) => Number(id));
-    console.log("Deleting santri ids:", ids);
+    setIsDeletingBulk(true);
 
-    try {
-      setIsDeletingBulk(true);
+    const promise = deleteSantriBulk(ids);
 
-      await toast.promise(
-        // deleteSantriBulk harus mengembalikan Promise (fetchAPI)
-        deleteSantriBulk(ids),
-        {
-          loading: "Menghapus data...",
-          success: (res: any) => {
-            // refresh data & reset UI
-            setSelectedSantri(new Set());
-            setIsSelectionMode(false);
-            fetchSantri();
-            return "Santri terpilih berhasil dihapus!";
-          },
-          error: (err: any) => {
-            // err mungkin adalah Error object atau response dari server
-            console.error("deleteSantriBulk error:", err);
-            return err?.message || "Gagal menghapus data.";
-          },
-        }
-      );
-    } catch (err) {
-      console.error("Unexpected error during bulk delete:", err);
-      toast.error("Terjadi kesalahan saat menghapus.");
-    } finally {
-      setIsDeletingBulk(false);
-    }
+    toast.promise(promise, {
+      loading: "Menghapus data...",
+      success: () => {
+        setSelectedSantri(new Set());
+        setIsSelectionMode(false);
+        fetchSantri(); // 3. Gunakan refetch
+        return "Santri terpilih berhasil dihapus!";
+      },
+      error: (err: any) => {
+        setIsDeletingBulk(false);
+        return err?.message || "Gagal menghapus data.";
+      },
+    });
+    
+    // Pastikan loading state di-reset setelah selesai
+    promise.finally(() => setIsDeletingBulk(false));
   };
-  // =======================================
 
+  // --- Sisa Logika (Selections, Memoization, Pagination, etc. - Tidak berubah) ---
   const handleSelectSantri = (id: string) => {
     const newSelection = new Set(selectedSantri);
     if (newSelection.has(id)) newSelection.delete(id);

@@ -1,6 +1,8 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -15,13 +17,14 @@ import {
   Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { getWalsanList, deleteWalsanBulk } from "@/lib/api";
+import { deleteWalsanBulk } from "@/lib/api";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
+import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
 
 const MySwal = withReactContent(Swal);
 
-// ================== TYPES (MODIFIKASI DI SINI) ==================
+// --- Tipe Data (Tidak Berubah) ---
 interface Santri {
   id: number;
   name: string;
@@ -31,16 +34,17 @@ interface Parent {
   name: string;
   santri: Santri[];
 }
-// Tambahkan username ke tipe Walsan
 interface Walsan {
   id: string; // ID user
   parent: Parent;
   email: string;
-  username: string; // <-- Tambahkan ini
+  username: string;
   name: string;
 }
 
-// ================== MODAL (MODIFIKASI DI SINI) ==================
+const ITEMS_PER_PAGE = 5;
+
+// --- Komponen Modal (Tidak Berubah) ---
 const PasswordDetailModal = ({
   isOpen,
   onClose,
@@ -53,7 +57,6 @@ const PasswordDetailModal = ({
   const [hasCopied, setHasCopied] = useState<string | null>(null);
 
   if (!isOpen || !walsan) return null;
-  const anakName = walsan.parent?.santri?.[0]?.name || "Santri";
 
   const handleCopy = (value: string, type: string) => {
     navigator.clipboard.writeText(value);
@@ -71,21 +74,16 @@ const PasswordDetailModal = ({
         className="bg-[#1E293B] rounded-2xl shadow-2xl w-full max-w-md p-6 text-white relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Icon centang hijau */}
         <div className="flex justify-center mb-3">
           <div className="bg-green-500/20 p-3 rounded-full">
             <Check className="text-green-400 w-8 h-8" />
           </div>
         </div>
-
-        {/* Judul dan deskripsi */}
         <h3 className="text-xl font-bold text-center">Informasi Akun Walsan</h3>
         <p className="text-sm text-gray-400 text-center mb-6">
           Berikut adalah kredensial untuk login wali santri.
         </p>
-
         <div className="space-y-4">
-          {/* Email */}
           <div>
             <label className="text-xs text-gray-400">Email (untuk Web)</label>
             <div className="flex items-center gap-2 mt-1">
@@ -108,8 +106,6 @@ const PasswordDetailModal = ({
               </Button>
             </div>
           </div>
-
-          {/* Username */}
           <div>
             <label className="text-xs text-gray-400">
               Username (untuk Mobile)
@@ -136,8 +132,6 @@ const PasswordDetailModal = ({
               </Button>
             </div>
           </div>
-
-          {/* Password */}
           <div>
             <label className="text-xs text-gray-400">Password Default</label>
             <div className="flex items-center gap-2 mt-1">
@@ -161,8 +155,6 @@ const PasswordDetailModal = ({
             </div>
           </div>
         </div>
-
-        {/* Tombol bawah */}
         <Button
           onClick={onClose}
           className="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
@@ -174,41 +166,29 @@ const PasswordDetailModal = ({
   );
 };
 
-// ================== MAIN PAGE (KODE ASLI ANDA, TANPA PERUBAHAN) ==================
+
 export default function WalsanListPage() {
-  const [walsanList, setWalsanList] = useState<Walsan[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 2. Gunakan useAxios untuk mengambil data walsan
+  const { data, isLoading, error, refetch: fetchWalsan } = useAxios<Walsan[]>({
+    url: "/santri/walsan",
+    method: "get",
+  });
+  const walsanList = data || []; // Fallback ke array kosong
+  
+  // State UI
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedWalsan, setSelectedWalsan] = useState<Walsan | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // bulk delete
-  const [selectedWalsanIds, setSelectedWalsanIds] = useState<Set<number>>(
-    new Set()
-  );
+  const [selectedWalsanIds, setSelectedWalsanIds] = useState<Set<number>>(new Set());
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
-
-  // pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 5; // kecilin biar gampang tes
-
-  const fetchWalsan = async () => {
-    setIsLoading(true);
-    try {
-      const response = await getWalsanList();
-      setWalsanList(Array.isArray(response) ? response : []);
-    } catch (error) {
-      toast.error("Gagal mengambil data walsan.");
-      console.error(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchWalsan();
-  }, []);
+    if (error) {
+      toast.error(`Gagal memuat data: ${error}`);
+    }
+  }, [error]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -230,16 +210,12 @@ export default function WalsanListPage() {
     [walsanList, searchTerm]
   );
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredWalsan.length / ITEMS_PER_PAGE)
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredWalsan.length / ITEMS_PER_PAGE));
   const paginatedWalsan = useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredWalsan.slice(startIndex, startIndex + ITEMS_PER_PAGE);
   }, [filteredWalsan, currentPage]);
 
-  // bulk delete helpers
   const handleSelectWalsan = (parentId: number) => {
     const newSelection = new Set(selectedWalsanIds);
     if (newSelection.has(parentId)) {
@@ -261,14 +237,12 @@ export default function WalsanListPage() {
     }
   };
 
-  // ===== FIXED handleBulkDelete: SweetAlert2 confirm + debug logs =====
   const handleBulkDelete = async () => {
     if (selectedWalsanIds.size === 0) {
       toast.error("Tidak ada akun walsan yang dipilih.");
       return;
     }
 
-    // Konfirmasi dengan SweetAlert2 (lebih baik UX)
     const res = await MySwal.fire({
       title: `Hapus ${selectedWalsanIds.size} akun walsan?`,
       text: "Tindakan ini tidak dapat dikembalikan.",
@@ -282,44 +256,23 @@ export default function WalsanListPage() {
     if (!res.isConfirmed) return;
 
     const ids = Array.from(selectedWalsanIds);
-    console.log("Requesting deleteWalsanBulk with ids:", ids); // <-- debug
+    setIsDeletingBulk(true);
 
-    try {
-      setIsDeletingBulk(true);
+    const promise = deleteWalsanBulk(ids);
 
-      await toast.promise(
-        // deleteWalsanBulk harus mengirim: /santri/delete-bulk-walsan?id=40,41
-        deleteWalsanBulk(ids),
-        {
-          loading: "Menghapus akun...",
-          success: (data: any) => {
-            // sukses: refresh, reset seleksi
-            fetchWalsan();
-            setSelectedWalsanIds(new Set());
-            setIsSelectionMode(false);
-            return (
-              data?.message || `${ids.length} akun walsan berhasil dihapus.`
-            );
-          },
-          error: (err: any) => {
-            console.error("deleteWalsanBulk error:", err);
-            // Jika server mengembalikan object error, coba tampilkan pesannya
-            const msg =
-              err?.message ||
-              err?.response?.message ||
-              "Terjadi kesalahan saat menghapus.";
-            return `Gagal: ${msg}`;
-          },
-        }
-      );
-    } catch (err) {
-      console.error("Unexpected error on bulk delete:", err);
-      toast.error("Terjadi kesalahan saat menghapus.");
-    } finally {
-      setIsDeletingBulk(false);
-    }
+    toast.promise(promise, {
+      loading: "Menghapus akun...",
+      success: (data: any) => {
+        fetchWalsan(); // 3. Gunakan refetch
+        setSelectedWalsanIds(new Set());
+        setIsSelectionMode(false);
+        return data?.message || `${ids.length} akun walsan berhasil dihapus.`;
+      },
+      error: (err: any) => `Gagal: ${err?.message || "Terjadi kesalahan saat menghapus."}`,
+    });
+
+    promise.finally(() => setIsDeletingBulk(false));
   };
-  // ================================================================
 
   const isAllOnPageSelected =
     paginatedWalsan.length > 0 &&
@@ -451,46 +404,47 @@ export default function WalsanListPage() {
             </tbody>
           </table>
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              Halaman {currentPage} dari {totalPages}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-              </Button>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                </Button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <Button
-                    key={page}
-                    variant={page === currentPage ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </Button>
-                )
-              )}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (page) => (
+                    <Button
+                      key={page}
+                      variant={page === currentPage ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </Button>
+                  )
+                )}
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                }
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

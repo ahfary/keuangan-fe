@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// src/hooks/useAxios.ts
 import { useState, useEffect, useCallback } from 'react';
 import axiosInstance from '../lib/axios';
 import { AxiosRequestConfig } from 'axios';
@@ -16,18 +15,23 @@ function useAxios<T>(axiosParams: AxiosRequestConfig): UseAxiosReturn<T> {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // Stringify the params to create a stable dependency for hooks
+  const paramsString = JSON.stringify(axiosParams);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const result = await axiosInstance(axiosParams);
-      setData(result as any);
+      // Parse the string back to an object for the request
+      const params = JSON.parse(paramsString);
+      const result = await axiosInstance(params);
+      setData(result);
       setError(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  }, [axiosParams]);
+  }, [paramsString]); // Dependency is now a stable string, preventing re-creation on every render
 
   useEffect(() => {
     fetchData();

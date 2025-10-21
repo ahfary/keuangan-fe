@@ -17,12 +17,12 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { getSalesHistory } from "@/lib/api";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
+import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
 
 // --- Tipe Data & Komponen Statis (Tidak Berubah) ---
 interface DailySale {
@@ -45,7 +45,7 @@ interface DailySummary {
   transactions: DailySale[];
 }
 
-const ITEMS_PER_PAGE = 5; // 7 Transaksi per halaman
+const ITEMS_PER_PAGE = 5;
 
 const StatCard = ({ title, value, icon, isLoading }: { title: string; value: string; icon: React.ReactNode; isLoading: boolean; }) => (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center">
@@ -66,52 +66,53 @@ function LaporanHarianContent() {
   const searchParams = useSearchParams();
   const tanggalFromUrl = searchParams.get('tanggal');
 
+  // State UI
   const [selectedDate, setSelectedDate] = useState(
     tanggalFromUrl || new Date().toISOString().split("T")[0]
   );
-  const [reportData, setReportData] = useState<DailySummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1); // State paginasi
+  const [currentPage, setCurrentPage] = useState(1);
 
+  // 2. Gunakan useAxios untuk mengambil data
+  const { data: salesHistory, isLoading, error } = useAxios<DailySale[]>({
+    url: '/history',
+    method: 'get',
+  });
+
+  // Tampilkan toast jika ada error
+  useEffect(() => {
+    if (error) {
+      toast.error("Gagal memuat riwayat penjualan.");
+    }
+  }, [error]);
+  
+  // Set tanggal dari URL jika ada
   useEffect(() => {
     if (tanggalFromUrl) {
         setSelectedDate(tanggalFromUrl);
     }
   }, [tanggalFromUrl]);
 
-  useEffect(() => {
-    const fetchReport = async () => {
-      if (!selectedDate) return;
-      setIsLoading(true);
-      try {
-        const salesHistory: DailySale[] = await getSalesHistory();
-        const filteredSales = salesHistory.filter(sale => new Date(sale.createdAt).toISOString().split('T')[0] === selectedDate);
+  // 3. Proses data yang sudah diambil menggunakan useMemo
+  const reportData = useMemo<DailySummary | null>(() => {
+    if (!salesHistory || !selectedDate) return null;
 
-        if (filteredSales.length > 0) {
-            const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-            const totalItemsSold = filteredSales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
-            setReportData({
-                totalRevenue,
-                totalTransactions: filteredSales.length,
-                totalItemsSold,
-                transactions: filteredSales.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
-            });
-        } else {
-            setReportData(null);
-        }
-      } catch (error) {
-        toast.error("Gagal memuat laporan harian.");
-        setReportData(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchReport();
-  }, [selectedDate]);
+    const filteredSales = salesHistory.filter(sale => new Date(sale.createdAt).toISOString().split('T')[0] === selectedDate);
 
-  // --- [BARU] Logika Paginasi untuk Tabel Transaksi ---
-  const totalPages = reportData ? Math.ceil(reportData.transactions.length / ITEMS_PER_PAGE) : 0;
+    if (filteredSales.length > 0) {
+      const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+      const totalItemsSold = filteredSales.reduce((sum, sale) => sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+      return {
+        totalRevenue,
+        totalTransactions: filteredSales.length,
+        totalItemsSold,
+        transactions: filteredSales.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      };
+    }
+    return null;
+  }, [salesHistory, selectedDate]);
+
+  const totalPages = reportData ? Math.ceil(reportData.transactions.length / ITEMS_PER_PAGE) : 1;
   const paginatedTransactions = useMemo(() => {
     if (!reportData) return [];
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -120,7 +121,6 @@ function LaporanHarianContent() {
 
 
   const handleDownload = () => {
-    // ... logika download tidak berubah ...
     if (!reportData || reportData.transactions.length === 0) {
         toast.error("Tidak ada data untuk diunduh.");
         return;
@@ -176,7 +176,6 @@ function LaporanHarianContent() {
 
   return (
     <div className="space-y-6">
-      {/* ... Header dan StatCard tidak berubah ... */}
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <div>
             <Link href="/dashboard/admin/kantin" className="inline-flex items-center text-sm text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400 mb-2">
@@ -267,7 +266,6 @@ function LaporanHarianContent() {
           </table>
         </div>
 
-        {/* --- [BARU] Paginasi untuk Tabel --- */}
         {totalPages > 1 && (
             <div className="p-4 flex justify-center items-center gap-4 border-t dark:border-gray-700">
                 <Button variant="outline" size="icon" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
@@ -294,3 +292,4 @@ export default function LaporanHarianPage() {
         </Suspense>
     );
 }
+

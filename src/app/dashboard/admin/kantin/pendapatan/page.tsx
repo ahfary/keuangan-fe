@@ -1,13 +1,13 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-// [FIX] Menambahkan Banknote ke daftar import
 import { DollarSign, ShoppingCart, Banknote, LoaderCircle, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import toast from 'react-hot-toast';
-import { getSalesHistory } from '@/lib/api';
 import Link from 'next/link';
+import useAxios from '@/hooks/useAxios'; // 1. Impor custom hook
 
 // --- Tipe Data ---
 interface Sale {
@@ -47,35 +47,30 @@ const StatCard = ({ title, value, icon, isLoading }: { title: string; value: str
 
 // --- Komponen Utama ---
 export default function PendapatanPage() {
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 2. Gunakan useAxios untuk mengambil data
+  const { data: sales, isLoading, error } = useAxios<Sale[]>({ url: '/history', method: 'get' });
+  const salesList = sales || []; // Fallback ke array kosong
+
+  // State UI
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('semua');
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
+  // Tampilkan toast jika ada error
   useEffect(() => {
-    const fetchSales = async () => {
-      setIsLoading(true);
-      try {
-        const salesHistory = await getSalesHistory();
-        const sortedSales = Array.isArray(salesHistory)
-          ? salesHistory.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          : [];
-        setSales(sortedSales);
-      } catch (error) {
-        toast.error("Gagal memuat data pendapatan.");
-        console.error("Fetch error:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchSales();
-  }, []);
+    if (error) {
+      toast.error("Gagal memuat data pendapatan.");
+    }
+  }, [error]);
   
+  // 3. Proses data yang sudah diambil menggunakan useMemo
   const { stats, tableData } = useMemo(() => {
     const dailyTotals: { [key: string]: { lunas: number; hutang: number; transaksi: number } } = {};
     
-    for (const sale of sales) {
+    // Urutkan data sekali di awal
+    const sortedSales = [...salesList].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    for (const sale of sortedSales) {
       const localDate = new Date(sale.createdAt);
       const dateString = localDate.toISOString().split('T')[0];
 
@@ -123,7 +118,7 @@ export default function PendapatanPage() {
       stats: { today: todayRevenue, thisWeek: thisWeekRevenue, thisMonth: thisMonthRevenue },
       tableData: filteredTableData,
     };
-  }, [sales, statusFilter]);
+  }, [salesList, statusFilter]);
   
   const totalPages = Math.ceil(tableData.length / ITEMS_PER_PAGE);
   const paginatedData = useMemo(() => {

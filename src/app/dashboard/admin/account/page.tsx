@@ -2,17 +2,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LoaderCircle } from "lucide-react";
-import { createAccount } from "@/lib/api"; // Asumsi ada fungsi registerUser di api.ts
+import { createAccount } from "@/lib/api";
 import toast from "react-hot-toast";
+import Swal from "sweetalert2";
+import withReactContent from "sweetalert2-react-content";
+
+const MySwal = withReactContent(Swal);
 
 export default function RegisterPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,6 +23,14 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setPassword("");
+    setConfirmPassword("");
+    setRole("Admin");
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -28,14 +38,27 @@ export default function RegisterPage() {
 
     if (password !== confirmPassword) {
       setError("Password dan konfirmasi password tidak cocok.");
+      toast.error("Password tidak cocok!");
       setIsLoading(false);
       return;
     }
 
     try {
       await createAccount({ name, email, password, role });
-      toast.success("Pendaftaran berhasil! Silakan masuk.");
-      router.push("/auth/login");
+      
+      MySwal.fire({
+        title: "Berhasil!",
+        text: "Akun baru telah berhasil dibuat.",
+        icon: "success",
+        confirmButtonText: "OK",
+        customClass: {
+           popup: 'bg-white dark:bg-gray-800',
+           title: 'text-gray-900 dark:text-white',
+           htmlContainer: 'text-gray-600 dark:text-gray-300'
+        }
+      });
+
+      resetForm(); // Reset form setelah berhasil
     } catch (err: any) {
       const errorMessage = err.message || "Gagal mendaftar.";
       setError(errorMessage);
