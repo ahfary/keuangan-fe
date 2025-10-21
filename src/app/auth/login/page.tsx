@@ -43,7 +43,7 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      const data = await loginUser(email, password, role);
+      const data: any = await loginUser(email, password, role);
 
       if (data.access_token && data.role) {
         Cookies.set("accessToken", data.accessToken, {
