@@ -15,15 +15,17 @@ function useAxios<T>(axiosParams: AxiosRequestConfig): UseAxiosReturn<T> {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Stringify the params to create a stable dependency for hooks
+  // Gunakan JSON.stringify untuk membuat dependensi yang stabil
   const paramsString = JSON.stringify(axiosParams);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Parse the string back to an object for the request
+      // Parse string kembali menjadi objek untuk request
       const params = JSON.parse(paramsString);
-      const result = await axiosInstance(params);
+      // [FIX] Secara eksplisit beritahu TypeScript bahwa `result` akan bertipe `T`
+      // karena interceptor kita sudah menangani ekstraksi data.
+      const result = await axiosInstance(params) as T;
       setData(result);
       setError(null);
     } catch (err: any) {
@@ -31,7 +33,7 @@ function useAxios<T>(axiosParams: AxiosRequestConfig): UseAxiosReturn<T> {
     } finally {
       setIsLoading(false);
     }
-  }, [paramsString]); // Dependency is now a stable string, preventing re-creation on every render
+  }, [paramsString]); // Dependensi sekarang stabil
 
   useEffect(() => {
     fetchData();
@@ -41,3 +43,4 @@ function useAxios<T>(axiosParams: AxiosRequestConfig): UseAxiosReturn<T> {
 }
 
 export default useAxios;
+
