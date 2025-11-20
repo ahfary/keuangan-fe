@@ -17,10 +17,10 @@ const kantinMenu = [
     icon: <ShoppingCart className="w-10 h-10 text-green-500" />,
   },
   {
-    title: 'Laporan Harian',
-    description: 'Akses jurnal akuntansi harian untuk pembukuan.',
-    href: '/dashboard/admin/kantin/laporan-harian',
-    icon: <BookText className="w-10 h-10 text-yellow-500" />,
+    title: 'Manajemen Piutang',
+    description: 'Catat dan kelola piutang dari pelanggan atau santri.',
+    href: '/dashboard/admin/kantin/piutang',
+    icon: <BookUser className="w-10 h-10 text-red-500" />,
   },
   {
     title: 'Rekap Pendapatan',
@@ -29,10 +29,10 @@ const kantinMenu = [
     icon: <TrendingUp className="w-10 h-10 text-indigo-500" />,
   },
   {
-    title: 'Manajemen Piutang',
-    description: 'Catat dan kelola piutang dari pelanggan atau santri.',
-    href: '/dashboard/admin/kantin/piutang',
-    icon: <BookUser className="w-10 h-10 text-red-500" />,
+    title: 'Laporan Harian',
+    description: 'Akses jurnal akuntansi harian untuk pembukuan.',
+    href: '/dashboard/admin/kantin/laporan-harian',
+    icon: <BookText className="w-10 h-10 text-yellow-500" />,
   },
 ];
 
