@@ -11,7 +11,8 @@ export const generateWalsan = (santriId: number) => api.post(`/auth/generate-wal
 export const updateSantriDetail = (id: string, santriData: { name: string; kelas: string }) =>
   api.put(`/santri/update/${id}`, santriData);
 
-export const createSantri = (santriData: { name: string; kelas: string; jurusan: string }) =>
+// UPDATE: Menambahkan field nisn pada parameter
+export const createSantri = (santriData: { name: string; kelas: string; jurusan: string; nisn: string }) =>
   api.post("/santri/create", santriData);
 
 export const updateSantriBulk = (ids: number[], data: any) =>
@@ -79,7 +80,8 @@ export const getTopBalanceSantri = () => api.get("/santri/saldo-max");
 
 
 // walsann
-export const deleteWalsanBulk = (ids: number[]) => api.delete(`/santri/walsan/delete-bulk?id=${ids.join(",")}`);
+// FIX: Memperbaiki endpoint agar sesuai dengan BE (@Delete('delete-bulk-walsan'))
+export const deleteWalsanBulk = (ids: number[]) => api.delete(`/santri/delete-bulk-walsan?id=${ids.join(",")}`);
 
 export const getWalsanList = () => api.get("/santri/walsan");
 

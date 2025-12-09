@@ -28,8 +28,11 @@ axiosInstance.interceptors.request.use(
 // Interceptor untuk menangani respons
 axiosInstance.interceptors.response.use(
   (response) => {
-    // Kembalikan data dari respons jika ada
-    return response.data.data || response.data;
+    // FIX: Cek apakah data.data tidak undefined (agar nilai 0 tetap diambil)
+    if (response.data && response.data.data !== undefined) {
+      return response.data.data;
+    }
+    return response.data;
   },
   (error) => {
     // Tangani error secara global

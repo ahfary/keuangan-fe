@@ -20,11 +20,11 @@ import toast from "react-hot-toast";
 import { deleteWalsanBulk } from "@/lib/api";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
-import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
+import useAxios from "@/hooks/useAxios";
 
 const MySwal = withReactContent(Swal);
 
-// --- Tipe Data (Tidak Berubah) ---
+// --- Tipe Data ---
 interface Santri {
   id: number;
   name: string;
@@ -44,7 +44,7 @@ interface Walsan {
 
 const ITEMS_PER_PAGE = 5;
 
-// --- Komponen Modal (Tidak Berubah) ---
+// --- Komponen Modal (Sama seperti sebelumnya, Email dihapus) ---
 const PasswordDetailModal = ({
   isOpen,
   onClose,
@@ -83,29 +83,9 @@ const PasswordDetailModal = ({
         <p className="text-sm text-gray-400 text-center mb-6">
           Berikut adalah kredensial untuk login wali santri.
         </p>
+        
         <div className="space-y-4">
-          <div>
-            <label className="text-xs text-gray-400">Email (untuk Web)</label>
-            <div className="flex items-center gap-2 mt-1">
-              <Input
-                readOnly
-                value={walsan.email}
-                className="bg-gray-800 border-none text-white"
-              />
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => handleCopy(walsan.email, "Email")}
-                className="border-gray-600"
-              >
-                {hasCopied === "Email" ? (
-                  <Check className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
-          </div>
+          {/* Username Section */}
           <div>
             <label className="text-xs text-gray-400">
               Username (untuk Mobile)
@@ -122,7 +102,7 @@ const PasswordDetailModal = ({
                 onClick={() =>
                   handleCopy(walsan.username || walsan.parent.name, "Username")
                 }
-                className="border-gray-600"
+                className="border-gray-600 hover:bg-gray-700"
               >
                 {hasCopied === "Username" ? (
                   <Check className="w-4 h-4 text-green-400" />
@@ -132,6 +112,8 @@ const PasswordDetailModal = ({
               </Button>
             </div>
           </div>
+
+          {/* Password Section */}
           <div>
             <label className="text-xs text-gray-400">Password Default</label>
             <div className="flex items-center gap-2 mt-1">
@@ -144,7 +126,7 @@ const PasswordDetailModal = ({
                 size="icon"
                 variant="outline"
                 onClick={() => handleCopy("smkmqbisa", "Password")}
-                className="border-gray-600"
+                className="border-gray-600 hover:bg-gray-700"
               >
                 {hasCopied === "Password" ? (
                   <Check className="w-4 h-4 text-green-400" />
@@ -155,6 +137,7 @@ const PasswordDetailModal = ({
             </div>
           </div>
         </div>
+
         <Button
           onClick={onClose}
           className="w-full mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold"
@@ -166,14 +149,13 @@ const PasswordDetailModal = ({
   );
 };
 
-
+// --- Halaman Utama ---
 export default function WalsanListPage() {
-  // 2. Gunakan useAxios untuk mengambil data walsan
   const { data, isLoading, error, refetch: fetchWalsan } = useAxios<Walsan[]>({
     url: "/santri/walsan",
     method: "get",
   });
-  const walsanList = data || []; // Fallback ke array kosong
+  const walsanList = data || [];
   
   // State UI
   const [searchTerm, setSearchTerm] = useState("");
@@ -263,7 +245,7 @@ export default function WalsanListPage() {
     toast.promise(promise, {
       loading: "Menghapus akun...",
       success: (data: any) => {
-        fetchWalsan(); // 3. Gunakan refetch
+        fetchWalsan();
         setSelectedWalsanIds(new Set());
         setIsSelectionMode(false);
         return data?.message || `${ids.length} akun walsan berhasil dihapus.`;
@@ -340,8 +322,10 @@ export default function WalsanListPage() {
                     />
                   </th>
                 )}
-                <th className="p-4 font-semibold">Email Walsan</th>
+                {/* UPDATE: Header Tabel */}
+                <th className="p-4 font-semibold">Username</th>
                 <th className="p-4 font-semibold">Nama Anak</th>
+                <th className="p-4 font-semibold">Password</th>
                 <th className="p-4 font-semibold text-center">Aksi</th>
               </tr>
             </thead>
@@ -349,7 +333,7 @@ export default function WalsanListPage() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={isSelectionMode ? 4 : 3}
+                    colSpan={isSelectionMode ? 5 : 4} // Update colspan
                     className="text-center p-8"
                   >
                     <LoaderCircle className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
@@ -368,12 +352,14 @@ export default function WalsanListPage() {
                         />
                       </td>
                     )}
-                    <td className="p-4">{walsan.email}</td>
+                    {/* UPDATE: Body Tabel */}
+                    <td className="p-4">{walsan.username || walsan.parent.name}</td>
                     <td className="p-4">
                       {walsan.parent?.santri?.length > 0
                         ? walsan.parent.santri.map((s) => s.name).join(", ")
                         : "Tidak ada data anak"}
                     </td>
+                    <td className="p-4 text-gray-500">******</td>
                     <td className="p-4 text-center">
                       <Button
                         variant="outline"
@@ -391,7 +377,7 @@ export default function WalsanListPage() {
               ) : (
                 <tr>
                   <td
-                    colSpan={isSelectionMode ? 4 : 3}
+                    colSpan={isSelectionMode ? 5 : 4} // Update colspan
                     className="text-center p-12"
                   >
                     <UserX className="w-12 h-12 mx-auto text-gray-400" />

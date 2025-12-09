@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
+import useAxios from "@/hooks/useAxios";
 import {
   createSantri,
   deleteSantriBulk,
@@ -37,26 +37,25 @@ interface Santri {
   kelas: string;
   jurusan: "RPL" | "TKJ";
   saldo: number;
+  nisn?: string;
 }
 
 type SantriFormData = {
   name: string;
   kelas: string;
   jurusan: string;
+  nisn: string;
 };
 
 const ITEMS_PER_PAGE = 6;
 
 export default function SantriPage() {
-  // 2. Gunakan useAxios untuk mengambil data santri
   const { data, isLoading, error, refetch: fetchSantri } = useAxios<Santri[]>({
     url: "/santri",
     method: "get",
   });
-  // Fallback ke array kosong jika data null
   const santriList = data || [];
 
-  // --- State untuk UI (Tidak berhubungan dengan data fetching) ---
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSantri, setEditingSantri] = useState<Santri | null>(null);
@@ -68,58 +67,57 @@ export default function SantriPage() {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDeletingBulk, setIsDeletingBulk] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Tampilkan toast jika ada error dari hook
   useEffect(() => {
     if (error) {
       toast.error(`Gagal mengambil data santri: ${error}`);
     }
   }, [error]);
   
-  // Reset halaman saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, filterType, selectedKelas, selectedJurusan]);
 
 
-  // --- Handler Functions (Gunakan `refetch` dari hook) ---
   const handleCreateSantri = async (data: SantriFormData) => {
-    const promise = createSantri({
-        name: data.name,
-        kelas: data.kelas,
-        jurusan: (data.jurusan ?? "RPL").toUpperCase() as "TKJ" | "RPL",
-    });
-
-    toast.promise(promise, {
-        loading: "Menambahkan santri...",
-        success: () => {
-          setIsModalOpen(false);
-          fetchSantri(); // 3. Gunakan refetch
-          return "Santri berhasil ditambahkan!";
-        },
-        error: (err: any) => `Gagal: ${err.message}`,
-    });
+    setIsSubmitting(true);
+    try {
+        await createSantri({
+            name: data.name,
+            kelas: data.kelas,
+            jurusan: (data.jurusan ?? "RPL").toUpperCase() as "TKJ" | "RPL",
+            nisn: data.nisn, 
+        });
+        toast.success("Santri berhasil ditambahkan!");
+        setIsModalOpen(false);
+        fetchSantri();
+    } catch (err: any) {
+        toast.error(`Gagal: ${err.message}`);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const handleUpdateSantri = async (data: SantriFormData) => {
     if (!editingSantri) return;
+    setIsSubmitting(true);
 
-    const promise = updateSantriBulk([Number(editingSantri.id)], {
-        name: data.name,
-        kelas: data.kelas,
-        jurusan: data.jurusan.toUpperCase(),
-    });
-
-    toast.promise(promise, {
-        loading: "Menyimpan perubahan...",
-        success: () => {
-          setEditingSantri(null);
-          setIsModalOpen(false);
-          fetchSantri(); // 3. Gunakan refetch
-          return "Santri berhasil diperbarui!";
-        },
-        error: (err: any) => `Gagal: ${err.message}`,
-    });
+    try {
+        await updateSantriBulk([Number(editingSantri.id)], {
+            name: data.name,
+            kelas: data.kelas,
+            jurusan: data.jurusan.toUpperCase(),
+        });
+        toast.success("Santri berhasil diperbarui!");
+        setEditingSantri(null);
+        setIsModalOpen(false);
+        fetchSantri(); 
+    } catch (err: any) {
+        toast.error(`Gagal: ${err.message}`);
+    } finally {
+        setIsSubmitting(false);
+    }
   };
 
   const handleBulkUpdateSantri = async (kelas?: string, jurusan?: string) => {
@@ -139,7 +137,7 @@ export default function SantriPage() {
       success: () => {
         setIsBulkModalOpen(false);
         setSelectedSantri(new Set());
-        fetchSantri(); // 3. Gunakan refetch
+        fetchSantri();
         return "Santri berhasil diperbarui!";
       },
       error: (err: any) => `Gagal: ${err.message}`,
@@ -173,7 +171,7 @@ export default function SantriPage() {
       success: () => {
         setSelectedSantri(new Set());
         setIsSelectionMode(false);
-        fetchSantri(); // 3. Gunakan refetch
+        fetchSantri();
         return "Santri terpilih berhasil dihapus!";
       },
       error: (err: any) => {
@@ -182,11 +180,9 @@ export default function SantriPage() {
       },
     });
     
-    // Pastikan loading state di-reset setelah selesai
     promise.finally(() => setIsDeletingBulk(false));
   };
 
-  // --- Sisa Logika (Selections, Memoization, Pagination, etc. - Tidak berubah) ---
   const handleSelectSantri = (id: string) => {
     const newSelection = new Set(selectedSantri);
     if (newSelection.has(id)) newSelection.delete(id);
@@ -482,9 +478,12 @@ export default function SantriPage() {
                     <td className="p-4">{santri.kelas}</td>
                     <td className="p-4">{santri.jurusan}</td>
                     <td className="p-4 font-mono">
+                      {/* UPDATE: Hapus desimal ,00 */}
                       {new Intl.NumberFormat("id-ID", {
                         style: "currency",
                         currency: "IDR",
+                        maximumFractionDigits: 0,
+                        minimumFractionDigits: 0,
                       }).format(santri.saldo)}
                     </td>
                     <td className="p-4 text-center">
@@ -523,9 +522,10 @@ export default function SantriPage() {
           setEditingSantri(null);
         }}
         onSave={(data) =>
-          editingSantri ? handleUpdateSantri(data) : handleCreateSantri(data)
+          editingSantri ? handleUpdateSantri(data as any) : handleCreateSantri(data as any)
         }
         initialData={editingSantri || undefined}
+        isLoading={isSubmitting}
       />
 
       <BulkEditModal

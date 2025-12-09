@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import useAxios from "@/hooks/useAxios"; // 1. Impor custom hook
+import useAxios from "@/hooks/useAxios";
 import {
   updateSantriDetail,
   generateWalsan,
@@ -80,7 +80,7 @@ interface GenerateWalsanResponse {
 }
 
 
-// --- Komponen-komponen (TransactionList, EditSantriModal, WalsanInfoModal) tidak berubah ---
+// --- Komponen-komponen ---
 const TransactionList = ({
   transactions,
   itemsMap,
@@ -105,9 +105,12 @@ const TransactionList = ({
             </div>
             <p className="font-semibold text-red-600">
               -
+              {/* UPDATE: Hapus desimal */}
               {new Intl.NumberFormat("id-ID", {
                 style: "currency",
                 currency: "IDR",
+                maximumFractionDigits: 0,
+                minimumFractionDigits: 0,
               }).format(tx.totalAmount)}
             </p>
           </div>
@@ -123,9 +126,12 @@ const TransactionList = ({
                     {itemName} (x{item.quantity})
                   </span>
                   <span>
+                    {/* UPDATE: Hapus desimal */}
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
                       currency: "IDR",
+                      maximumFractionDigits: 0,
+                      minimumFractionDigits: 0,
                     }).format(item.priceAtPurchase * item.quantity)}
                   </span>
                 </li>
@@ -313,7 +319,7 @@ export default function SantriDetailPage() {
   const [generatedWalsanCreds, setGeneratedWalsanCreds] = useState<{ email: string; username: string; password?: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // --- REFAKTOR: Pengambilan data menggunakan useAxios ---
+  // --- useAxios Hooks ---
   const { data: santri, error: santriError, isLoading: isLoadingSantri, refetch: refetchSantri } = useAxios<SantriDetail>({ url: `/santri/detail/${id}` });
   const { data: historyData, error: historyError, isLoading: isLoadingHistory } = useAxios<TransactionHistory[]>({ url: `/history/santri/${id}` });
   const { data: itemsData, error: itemsError, isLoading: isLoadingItems } = useAxios<Item[]>({ url: '/items' });
@@ -329,7 +335,7 @@ export default function SantriDetailPage() {
     }
   }, [combinedError]);
 
-  // --- Proses data turunan menggunakan useMemo agar efisien ---
+  // --- Proses data turunan menggunakan useMemo ---
   const itemsMap = useMemo(() => {
       const map = new Map<number, Item>();
       itemsData?.forEach((item) => map.set(item.id, item));
@@ -359,7 +365,7 @@ export default function SantriDetailPage() {
   const handleNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const handlePrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
   
-  // --- Handler untuk Update Santri ---
+  // --- Handlers ---
   const handleUpdateSantri = async (data: SantriEditData) => {
     if (!santri) return;
     const promise = updateSantriDetail(id, data);
@@ -373,13 +379,12 @@ export default function SantriDetailPage() {
     try {
       await promise;
       setIsEditModalOpen(false);
-      refetchSantri(); // Panggil refetch untuk memperbarui data santri
+      refetchSantri();
     } catch (err) {
-      // Error sudah ditangani oleh toast.promise
+      // Error sudah ditangani oleh toast
     }
   };
   
-  // --- Handler untuk Generate Walsan ---
   const handleGenerateWalsan = async () => {
     if (!santri || hasWalsan) {
       toast.error("Akun walsan sudah ada atau data santri tidak valid.");
@@ -396,7 +401,7 @@ export default function SantriDetailPage() {
       
       setGeneratedWalsanCreds({ email: res.user.email, username: res.user.username, password: "smkmqbisa" });
       setIsWalsanInfoModalOpen(true);
-      refetchWalsan(); // Ambil ulang daftar walsan
+      refetchWalsan();
     } catch (err: any) {
       toast.error(`Gagal: ${err?.message || "Terjadi kesalahan."}`);
     } finally {
@@ -404,7 +409,6 @@ export default function SantriDetailPage() {
     }
   };
   
-  // --- Render Logic ---
   if (isLoading)
     return (
       <div className="flex justify-center items-center h-full pt-20">
@@ -488,9 +492,12 @@ export default function SantriDetailPage() {
               <div>
                 <p className="text-sm text-gray-500">Saldo Saat Ini</p>
                 <p className="text-3xl font-bold">
+                  {/* UPDATE: Hapus desimal */}
                   {new Intl.NumberFormat("id-ID", {
                     style: "currency",
                     currency: "IDR",
+                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 0,
                   }).format(santri.saldo)}
                 </p>
               </div>
@@ -500,9 +507,12 @@ export default function SantriDetailPage() {
               <div>
                 <p className="text-sm text-gray-500">Total Hutang</p>
                 <p className="text-3xl font-bold">
+                  {/* UPDATE: Hapus desimal */}
                   {new Intl.NumberFormat("id-ID", {
                     style: "currency",
                     currency: "IDR",
+                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 0,
                   }).format(santri.hutang ?? 0)}
                 </p>
               </div>
@@ -547,4 +557,3 @@ export default function SantriDetailPage() {
     </>
   );
 }
-
