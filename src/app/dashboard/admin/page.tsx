@@ -128,11 +128,21 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <p className="label font-bold text-gray-800 dark:text-white">{`${label}`}</p>
         <p className="intro text-green-500">{`Pemasukan : ${new Intl.NumberFormat(
           "id-ID",
-          { style: "currency", currency: "IDR" }
+          { 
+            style: "currency", 
+            currency: "IDR",
+            maximumFractionDigits: 0, 
+            minimumFractionDigits: 0 
+          }
         ).format(payload[0].value)}`}</p>
         <p className="intro text-red-500">{`Pengeluaran : ${new Intl.NumberFormat(
           "id-ID",
-          { style: "currency", currency: "IDR" }
+          { 
+            style: "currency", 
+            currency: "IDR",
+            maximumFractionDigits: 0, 
+            minimumFractionDigits: 0 
+          }
         ).format(payload[1].value)}`}</p>
       </div>
     );
@@ -196,11 +206,9 @@ export default function DashboardPage() {
   const [topSantri, setTopSantri] = useState<TopSantri[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // --- FIX: Deklarasikan state untuk userName ---
   const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    // --- FIX: Ambil nama dari cookie setelah komponen ter-mount di client ---
     setUserName(Cookies.get("name") || "Admin");
 
     const fetchDashboardData = async () => {
@@ -257,18 +265,24 @@ export default function DashboardPage() {
         />
         <StatCard
           title="Total Saldo Terkelola"
+          // UPDATE: Hapus desimal ,00
           value={new Intl.NumberFormat("id-ID", {
             style: "currency",
             currency: "IDR",
+            maximumFractionDigits: 0,
+            minimumFractionDigits: 0,
           }).format(stats.totalSaldo)}
           icon={<Wallet className="w-8 h-8 text-green-500" />}
           isLoading={isLoading}
         />
         <StatCard
           title="Total Hutang Santri"
+          // UPDATE: Hapus desimal ,00
           value={new Intl.NumberFormat("id-ID", {
             style: "currency",
             currency: "IDR",
+            maximumFractionDigits: 0,
+            minimumFractionDigits: 0,
           }).format(stats.totalHutang)}
           icon={<Clock className="w-8 h-8 text-yellow-500" />}
           isLoading={isLoading}
@@ -338,10 +352,12 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <p className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                    {/* UPDATE: Hapus desimal ,00 pada list */}
                     {new Intl.NumberFormat("id-ID", {
                       style: "currency",
                       currency: "IDR",
-                      minimumFractionDigits: 0
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0
                     }).format(santri.saldo)}
                   </p>
                 </li>
